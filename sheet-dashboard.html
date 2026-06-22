@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SheetFlow — Live Sheets Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-0: #07091a;
+    --bg-1: #0d1230;
+    --glass: rgba(255, 255, 255, 0.06);
+    --glass-border: rgba(255, 255, 255, 0.10);
+    --accent-a: #7c3aed;
+    --accent-b: #ec4899;
+    --accent-c: #06b6d4;
+    --text-0: #f5f7ff;
+    --text-1: #a5adce;
+    --text-2: #6b7393;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-0);
+    color: var(--text-0);
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated aurora background */
+  .aurora {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .aurora::before, .aurora::after, .aurora .blob3 {
+    content: "";
+    position: absolute;
+    width: 60vw;
+    height: 60vw;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.55;
+    will-change: transform;
+  }
+  .aurora::before {
+    background: radial-gradient(circle at center, #7c3aed, transparent 60%);
+    top: -20vw; left: -15vw;
+    animation: floatA 22s ease-in-out infinite alternate;
+  }
+  .aurora::after {
+    background: radial-gradient(circle at center, #ec4899, transparent 60%);
+    bottom: -25vw; right: -10vw;
+    animation: floatB 26s ease-in-out infinite alternate;
+  }
+  .aurora .blob3 {
+    background: radial-gradient(circle at center, #06b6d4, transparent 60%);
+    top: 40vh; left: 30vw;
+    opacity: 0.35;
+    animation: floatC 30s ease-in-out infinite alternate;
+  }
+  @keyframes floatA { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(10vw, 8vh) scale(1.15); } }
+  @keyframes floatB { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(-8vw, -6vh) scale(1.2); } }
+  @keyframes floatC { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(-6vw, 10vh) scale(0.9); } }
+
+  /* Subtle grid overlay */
+  .grid-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+    pointer-events: none;
+  }
+
+  .glass {
+    background: var(--glass);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+  }
+
+  .gradient-text {
+    background: linear-gradient(120deg, #c4b5fd 0%, #f0abfc 50%, #67e8f9 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .btn-primary {
+    background: linear-gradient(120deg, var(--accent-a), var(--accent-b));
+    color: white;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    box-shadow: 0 8px 28px -8px rgba(124, 58, 237, 0.6);
+  }
+  .btn-primary:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 14px 36px -8px rgba(236, 72, 153, 0.6); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-0);
+    border: 1px solid var(--glass-border);
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+
+  .dropzone {
+    border: 2px dashed rgba(255,255,255,0.18);
+    transition: all 0.2s ease;
+  }
+  .dropzone.dragging {
+    border-color: var(--accent-b);
+    background: rgba(236, 72, 153, 0.08);
+    transform: scale(1.01);
+  }
+
+  .tab-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-1);
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+  }
+  .tab-btn:hover { color: var(--text-0); background: rgba(255,255,255,0.04); }
+  .tab-btn.active {
+    color: white;
+    background: linear-gradient(120deg, rgba(124, 58, 237, 0.45), rgba(236, 72, 153, 0.35));
+    border-color: rgba(236, 72, 153, 0.4);
+    box-shadow: 0 4px 18px -6px rgba(124, 58, 237, 0.6);
+  }
+
+  table.data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+  }
+  table.data-table thead th {
+    position: sticky;
+    top: 0;
+    background: rgba(13, 18, 48, 0.95);
+    backdrop-filter: blur(8px);
+    text-align: left;
+    padding: 12px 14px;
+    color: var(--text-1);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    user-select: none;
+    z-index: 2;
+  }
+  table.data-table thead th:hover { color: var(--text-0); background: rgba(124, 58, 237, 0.15); }
+  table.data-table thead th .sort-indicator { opacity: 0.4; margin-left: 6px; font-size: 10px; }
+  table.data-table thead th.sorted-asc .sort-indicator,
+  table.data-table thead th.sorted-desc .sort-indicator { opacity: 1; color: #f0abfc; }
+  table.data-table tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: var(--text-0);
+    vertical-align: top;
+    max-width: 380px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  table.data-table tbody tr { transition: background 0.12s ease; }
+  table.data-table tbody tr:hover { background: rgba(124, 58, 237, 0.08); }
+  table.data-table tbody td.num { color: #67e8f9; font-variant-numeric: tabular-nums; text-align: right; }
+  table.data-table tbody td.date { color: #fcd34d; }
+  table.data-table tbody td.bool { color: #86efac; font-style: italic; }
+  table.data-table tbody td.null-cell { color: var(--text-2); font-style: italic; }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .pill-num { background: rgba(103, 232, 249, 0.12); color: #67e8f9; border: 1px solid rgba(103, 232, 249, 0.25); }
+  .pill-date { background: rgba(252, 211, 77, 0.12); color: #fcd34d; border: 1px solid rgba(252, 211, 77, 0.25); }
+  .pill-str  { background: rgba(196, 181, 253, 0.12); color: #c4b5fd; border: 1px solid rgba(196, 181, 253, 0.25); }
+  .pill-bool { background: rgba(134, 239, 172, 0.12); color: #86efac; border: 1px solid rgba(134, 239, 172, 0.25); }
+
+  .scroll-x { overflow-x: auto; }
+  .scroll-x::-webkit-scrollbar, .scroll-y::-webkit-scrollbar { height: 8px; width: 8px; }
+  .scroll-x::-webkit-scrollbar-thumb, .scroll-y::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 999px; }
+  .scroll-x::-webkit-scrollbar-thumb:hover, .scroll-y::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+  .fade-in { animation: fadeIn 0.5s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.04) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 8px;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(40px);
+    background: rgba(13, 18, 48, 0.95);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--glass-border);
+    color: var(--text-0);
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    box-shadow: 0 12px 40px -10px rgba(0,0,0,0.6);
+    z-index: 100;
+    opacity: 0;
+    transition: all 0.3s ease;
+    max-width: 90vw;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { border-color: rgba(239, 68, 68, 0.5); }
+  .toast.success { border-color: rgba(34, 197, 94, 0.5); }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  input.field, select.field {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--glass-border);
+    color: var(--text-0);
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    width: 100%;
+    outline: none;
+    transition: all 0.15s ease;
+  }
+  input.field:focus, select.field:focus {
+    border-color: var(--accent-b);
+    background: rgba(255,255,255,0.06);
+    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.18);
+  }
+  input.field::placeholder { color: var(--text-2); }
+
+  .stat-card {
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-a), var(--accent-b), var(--accent-c));
+    opacity: 0.7;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="aurora"><div class="blob3"></div></div>
+  <div class="grid-overlay"></div>
+
+  <main class="relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-8 md:py-12">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-10 fade-in">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl flex items-center justify-center" style="background: linear-gradient(120deg, var(--accent-a), var(--accent-b)); box-shadow: 0 8px 24px -6px rgba(124,58,237,0.6);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="3" y1="15" x2="21" y2="15"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold tracking-tight gradient-text">SheetFlow</h1>
+          <p class="text-xs text-[color:var(--text-2)] -mt-0.5">Live Google Sheets & Spreadsheet Dashboard</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="exportCsvBtn" class="btn-ghost hidden text-sm">
+          <span>Export CSV</span>
+        </button>
+        <button id="resetBtn" class="btn-ghost hidden text-sm">New Sheet</button>
+      </div>
+    </header>
+
+    <!-- Input Section -->
+    <section id="inputSection" class="fade-in">
+      <div class="glass p-6 md:p-9 mb-6">
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- Upload -->
+          <div>
+            <label class="block text-xs uppercase tracking-wider text-[color:var(--text-2)] font-semibold mb-3">Upload File</label>
+            <div id="dropzone" class="dropzone rounded-2xl p-8 text-center cursor-pointer hover:bg-white/[0.03]">
+              <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.tsv,.ods" class="hidden" />
+              <div class="flex flex-col items-center gap-3">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background: rgba(124,58,237,0.18);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-[color:var(--text-0)]">Drop file or click to browse</p>
+                  <p class="text-xs text-[color:var(--text-2)] mt-1">.xlsx, .xls, .csv, .tsv, .ods supported</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- URL -->
+          <div>
+            <label class="block text-xs uppercase tracking-wider text-[color:var(--text-2)] font-semibold mb-3">Or paste Google Sheets URL</label>
+            <div class="flex flex-col gap-3">
+              <input type="text" id="sheetUrl" class="field" placeholder="https://docs.google.com/spreadsheets/d/…/edit#gid=0" />
+              <div class="flex items-center gap-2 text-xs text-[color:var(--text-2)]">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>Sheet must be shared as "Anyone with link → Viewer" or published to web.</span>
+              </div>
+              <button id="loadUrlBtn" class="btn-primary text-sm self-start mt-1">
+                Load from Google Sheets
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-7 pt-6 border-t border-white/5">
+          <p class="text-xs text-[color:var(--text-2)] mb-3 uppercase tracking-wider font-semibold">Try a live demo</p>
+          <div class="flex flex-wrap gap-2">
+            <button class="btn-ghost text-xs demo-btn" data-demo="sales">Sales Pipeline</button>
+            <button class="btn-ghost text-xs demo-btn" data-demo="hr">HR Directory</button>
+            <button class="btn-ghost text-xs demo-btn" data-demo="finance">Finance P&L</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Loading -->
+    <section id="loadingSection" class="hidden">
+      <div class="glass p-10 text-center">
+        <div class="inline-block">
+          <div class="spinner" style="width:36px;height:36px;border-width:3px;"></div>
+        </div>
+        <p class="mt-4 text-sm text-[color:var(--text-1)]">Loading workbook & analyzing sheets…</p>
+      </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="dashboardSection" class="hidden">
+      <!-- Stats -->
+      <div id="statsGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+
+      <!-- Charts row -->
+      <div class="grid md:grid-cols-2 gap-4 mb-6">
+        <div class="glass p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-[color:var(--text-0)]">Auto Chart · <span id="chartXLabel" class="text-[color:var(--text-1)]">—</span></h3>
+            <select id="chartXSelect" class="field text-xs py-1.5 px-2" style="width:auto; background:rgba(255,255,255,0.06);"></select>
+          </div>
+          <div class="h-64 relative"><canvas id="barChart"></canvas></div>
+        </div>
+        <div class="glass p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-[color:var(--text-0)]">Distribution · <span id="chartPieLabel" class="text-[color:var(--text-1)]">—</span></h3>
+            <select id="chartPieSelect" class="field text-xs py-1.5 px-2" style="width:auto; background:rgba(255,255,255,0.06);"></select>
+          </div>
+          <div class="h-64 relative"><canvas id="pieChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="glass p-5 mb-4">
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+          <span class="text-xs uppercase tracking-wider text-[color:var(--text-2)] font-semibold mr-2">Sheets</span>
+          <div id="tabsContainer" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
+        <!-- Search & filters -->
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <div class="relative flex-1 min-w-[200px]">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-2)]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="searchInput" class="field pl-9 text-sm" placeholder="Search across all columns…" />
+          </div>
+          <div class="text-xs text-[color:var(--text-2)]">
+            <span id="rowCountLabel">— rows</span> · <span id="colCountLabel">— cols</span>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="scroll-x scroll-y" style="max-height: 60vh; overflow:auto;">
+          <table class="data-table" id="dataTable">
+            <thead><tr></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div id="emptyState" class="hidden text-center py-10 text-[color:var(--text-2)] text-sm">
+          No rows match your search.
+        </div>
+      </div>
+    </section>
+
+    <footer class="text-center text-xs text-[color:var(--text-2)] mt-10 pb-6">
+      SheetFlow · 100% client-side — your data never leaves your browser
+    </footer>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+<script>
+/* ===========================================================
+   SheetFlow — single-file sheets dashboard
+   - Parses xlsx/xls/csv/tsv/ods via SheetJS
+   - Fetches Google Sheets via gviz JSON endpoint
+   - Auto-detects column types, generates charts, renders tables
+   =========================================================== */
+
+const state = {
+  workbook: null,      // { sheetName: { headers, rows, types } }
+  sheetNames: [],
+  activeSheet: null,
+  searchTerm: "",
+  sortCol: null,
+  sortDir: "asc",
+  barChart: null,
+  pieChart: null,
+  fileName: "workbook",
+};
+
+const $ = (id) => document.getElementById(id);
+
+function showToast(msg, type = "info", ms = 3000) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "toast show " + (type === "error" ? "error" : type === "success" ? "success" : "");
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = "toast"; }, ms);
+}
+
+/* ---------- Type detection ---------- */
+function detectType(value) {
+  if (value === null || value === undefined || value === "") return "null";
+  if (typeof value === "boolean") return "bool";
+  if (typeof value === "number" && isFinite(value)) return "num";
+  if (value instanceof Date) return "date";
+  if (typeof value === "string") {
+    const s = value.trim();
+    // ISO date / datetime
+    if (/^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?$/.test(s)) return "date";
+    // Common date formats like 1/2/2020 or 01-02-2020
+    if (/^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(s)) return "date";
+    // Currency / percent
+    if (/^[$€£¥₹]?\s*-?\d[\d,]*\.?\d*\s%?$/.test(s)) return "num";
+    // Boolean-ish
+    if (/^(true|false|yes|no|y|n)$/i.test(s)) return "bool";
+    return "str";
+  }
+  return "str";
+}
+
+function inferColumnTypes(headers, rows) {
+  const types = {};
+  headers.forEach((h, i) => {
+    let numCount = 0, dateCount = 0, boolCount = 0, strCount = 0, nullCount = 0;
+    const sampleSize = Math.min(rows.length, 50);
+    for (let r = 0; r < sampleSize; r++) {
+      const v = rows[r][i];
+      const t = detectType(v);
+      if (t === "num") numCount++;
+      else if (t === "date") dateCount++;
+      else if (t === "bool") boolCount++;
+      else if (t === "null") nullCount++;
+      else strCount++;
+    }
+    const nonNull = numCount + dateCount + boolCount + strCount;
+    if (nonNull === 0) types[h] = "str";
+    else if (numCount / nonNull > 0.7) types[h] = "num";
+    else if (dateCount / nonNull > 0.7) types[h] = "date";
+    else if (boolCount / nonNull > 0.7) types[h] = "bool";
+    else types[h] = "str";
+  });
+  return types;
+}
+
+/* ---------- Build workbook from raw sheet array ---------- */
+function buildWorkbookFromRaw(rawSheets) {
+  const wb = {};
+  for (const [name, aoa] of Object.entries(rawSheets)) {
+    if (!aoa || aoa.length === 0) continue;
+    // find header row: first non-empty row
+    let headerIdx = 0;
+    while (headerIdx < aoa.length && (aoa[headerIdx] === undefined || aoa[headerIdx].every(c => c === null || c === undefined || c === ""))) headerIdx++;
+    const headers = (aoa[headerIdx] || []).map((h, i) => h === null || h === undefined || h === "" ? `Column ${i+1}` : String(h));
+    const rows = aoa.slice(headerIdx + 1).map(r => headers.map((_, i) => r[i] === undefined ? null : r[i]));
+    const types = inferColumnTypes(headers, rows);
+    wb[name] = { headers, rows, types };
+  }
+  return wb;
+}
+
+/* ---------- File parsing ---------- */
+function handleFile(file) {
+  if (!file) return;
+  state.fileName = file.name.replace(/\.[^.]+$/, "");
+  showLoading();
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: "array", cellDates: true });
+      const rawSheets = {};
+      wb.SheetNames.forEach(name => {
+        const ws = wb.Sheets[name];
+        rawSheets[name] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+      });
+      ingestSheets(rawSheets);
+    } catch (err) {
+      console.error(err);
+      showToast("Could not parse file: " + err.message, "error");
+      hideLoading();
+    }
+  };
+  reader.onerror = () => { showToast("File read error", "error"); hideLoading(); };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ---------- Google Sheets URL fetch ---------- */
+function parseSheetUrl(url) {
+  // Accepts docs.google.com/spreadsheets/d/{ID}/edit#gid={GID}
+  // or /d/{ID}/gviz/tq... etc.
+  const idMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (!idMatch) return null;
+  const id = idMatch[1];
+  let gid = "0";
+  const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
+  if (gidMatch) gid = gidMatch[1];
+  return { id, gid };
+}
+
+async function loadFromGoogleSheets(url) {
+  const parsed = parseSheetUrl(url);
+  if (!parsed) {
+    showToast("Could not read the Google Sheets URL. Make sure it's a docs.google.com/spreadsheets link.", "error");
+    return;
+  }
+  showLoading();
+  state.fileName = "google-sheet";
+
+  // First, fetch the workbook sheet list + all sheets via the export=xlsx endpoint
+  // This often works without CORS for publicly-shared sheets.
+  const xlsxUrl = `https://docs.google.com/spreadsheets/d/${parsed.id}/export?format=xlsx`;
+  try {
+    const res = await fetch(xlsxUrl);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(new Uint8Array(buf), { type: "array", cellDates: true });
+    const rawSheets = {};
+    wb.SheetNames.forEach(name => {
+      const ws = wb.Sheets[name];
+      rawSheets[name] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+    });
+    if (Object.keys(rawSheets).length === 0) throw new Error("Empty workbook");
+    ingestSheets(rawSheets);
+  } catch (err) {
+    console.warn("xlsx export failed, falling back to gviz:", err);
+    // Fallback: gviz JSON endpoint (returns one sheet at a time, often CORS-friendly)
+    try {
+      const gvizUrl = `https://docs.google.com/spreadsheets/d/${parsed.id}/gviz/tq?tqx=out:json&gid=${parsed.gid}`;
+      const r2 = await fetch(gvizUrl);
+      if (!r2.ok) throw new Error("HTTP " + r2.status);
+      const text = await r2.text();
+      const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1));
+      const aoa = gvizToAoa(json);
+      const sheetName = json.table && json.table.name ? json.table.name : "Sheet1";
+      ingestSheets({ [sheetName]: aoa });
+    } catch (err2) {
+      console.error(err2);
+      hideLoading();
+      showToast("Couldn't fetch the sheet. Make sure it's shared as 'Anyone with the link → Viewer', or upload the file instead.", "error", 5000);
+    }
+  }
+}
+
+function gvizToAoa(json) {
+  const cols = json.table.cols;
+  const rows = json.table.rows;
+  const headers = cols.map(c => (c && c.label) ? c.label : (c && c.id ? c.id : "Column"));
+  const aoa = [headers];
+  rows.forEach(r => {
+    const row = cols.map((_, i) => {
+      const cell = r.c && r.c[i];
+      if (!cell) return null;
+      // Try to preserve number/date
+      if (cell.v !== undefined && cell.v !== null) {
+        if (cell.type === "datetime" || cell.type === "date") {
+          const d = new Date(cell.v);
+          return isNaN(d) ? cell.v : d;
+        }
+        return cell.v;
+      }
+      return null;
+    });
+    aoa.push(row);
+  });
+  return aoa;
+}
+
+/* ---------- Ingest & render ---------- */
+function ingestSheets(rawSheets) {
+  state.workbook = buildWorkbookFromRaw(rawSheets);
+  state.sheetNames = Object.keys(state.workbook).filter(n => state.workbook[n].headers.length > 0);
+  if (state.sheetNames.length === 0) {
+    hideLoading();
+    showToast("No sheets with data found.", "error");
+    return;
+  }
+  state.activeSheet = state.sheetNames[0];
+  $("inputSection").classList.add("hidden");
+  $("loadingSection").classList.add("hidden");
+  $("dashboardSection").classList.remove("hidden");
+  $("exportCsvBtn").classList.remove("hidden");
+  $("resetBtn").classList.remove("hidden");
+
+  renderStats();
+  renderTabs();
+  renderSheet();
+  hideLoading();
+  showToast(`Loaded ${state.sheetNames.length} sheet${state.sheetNames.length>1?"s":""} · ${totalRowCount().toLocaleString()} rows`, "success");
+}
+
+function totalRowCount() {
+  return state.sheetNames.reduce((sum, n) => sum + state.workbook[n].rows.length, 0);
+}
+function totalColCount() {
+  return state.sheetNames.reduce((sum, n) => sum + state.workbook[n].headers.length, 0);
+}
+
+function renderStats() {
+  const totalRows = totalRowCount();
+  const totalCols = totalColCount();
+  const activeRows = state.workbook[state.activeSheet].rows.length;
+  const stats = [
+    { label: "Sheets", value: state.sheetNames.length, icon: "sheets", color: "#c4b5fd" },
+    { label: "Total Rows", value: totalRows.toLocaleString(), icon: "rows", color: "#67e8f9" },
+    { label: "Total Columns", value: totalCols.toLocaleString(), icon: "cols", color: "#f0abfc" },
+    { label: "Active Sheet Rows", value: activeRows.toLocaleString(), icon: "active", color: "#fcd34d" },
+  ];
+  $("statsGrid").innerHTML = stats.map(s => `
+    <div class="glass stat-card p-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[10px] uppercase tracking-wider text-[color:var(--text-2)] font-semibold">${s.label}</p>
+          <p class="text-2xl font-bold mt-1" style="color:${s.color}">${s.value}</p>
+        </div>
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:${s.color}22;">
+          ${iconSvg(s.icon, s.color)}
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function iconSvg(name, color) {
+  const s = `stroke="${color}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
+  switch(name) {
+    case "sheets": return `<svg width="16" height="16" viewBox="0 0 24 24" ${s}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>`;
+    case "rows": return `<svg width="16" height="16" viewBox="0 0 24 24" ${s}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`;
+    case "cols": return `<svg width="16" height="16" viewBox="0 0 24 24" ${s}><line x1="6" y1="3" x2="6" y2="21"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="18" y1="3" x2="18" y2="21"/></svg>`;
+    case "active": return `<svg width="16" height="16" viewBox="0 0 24 24" ${s}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`;
+    default: return "";
+  }
+}
+
+function renderTabs() {
+  $("tabsContainer").innerHTML = state.sheetNames.map(name => {
+    const count = state.workbook[name].rows.length;
+    return `<button class="tab-btn ${name === state.activeSheet ? 'active' : ''}" data-sheet="${escapeHtml(name)}">
+      ${escapeHtml(name)} <span style="opacity:0.5; margin-left:4px; font-size:11px;">${count}</span>
+    </button>`;
+  }).join("");
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.activeSheet = btn.dataset.sheet;
+      state.searchTerm = "";
+      $("searchInput").value = "";
+      state.sortCol = null;
+      renderTabs();
+      renderSheet();
+    });
+  });
+}
+
+/* ---------- Table rendering ---------- */
+function getProcessedRows() {
+  const sheet = state.workbook[state.activeSheet];
+  let rows = sheet.rows;
+  // search
+  if (state.searchTerm) {
+    const q = state.searchTerm.toLowerCase();
+    rows = rows.filter(r => r.some(c => c !== null && String(c).toLowerCase().includes(q)));
+  }
+  // sort
+  if (state.sortCol !== null) {
+    const idx = sheet.headers.indexOf(state.sortCol);
+    if (idx >= 0) {
+      const dir = state.sortDir === "asc" ? 1 : -1;
+      const type = sheet.types[state.sortCol];
+      rows = [...rows].sort((a, b) => {
+        const av = a[idx], bv = b[idx];
+        if (av === null || av === undefined || av === "") return 1;
+        if (bv === null || bv === undefined || bv === "") return -1;
+        if (type === "num") return (Number(av) - Number(bv)) * dir;
+        if (type === "date") {
+          const ad = av instanceof Date ? av.getTime() : new Date(av).getTime();
+          const bd = bv instanceof Date ? bv.getTime() : new Date(bv).getTime();
+          return (ad - bd) * dir;
+        }
+        return String(av).localeCompare(String(bv)) * dir;
+      });
+    }
+  }
+  return rows;
+}
+
+function formatCell(value, type) {
+  if (value === null || value === undefined || value === "") return { html: '<span class="null-cell">—</span>', cls: "null-cell" };
+  if (type === "num") {
+    const n = typeof value === "number" ? value : Number(String(value).replace(/[$€£¥₹,\s%]/g, ""));
+    return { html: isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : escapeHtml(String(value)), cls: "num" };
+  }
+  if (type === "date") {
+    const d = value instanceof Date ? value : new Date(value);
+    if (isNaN(d)) return { html: escapeHtml(String(value)), cls: "date" };
+    return { html: escapeHtml(d.toLocaleDateString()), cls: "date" };
+  }
+  if (type === "bool") {
+    return { html: escapeHtml(String(value)), cls: "bool" };
+  }
+  return { html: escapeHtml(String(value)), cls: "" };
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+}
+
+function renderSheet() {
+  const sheet = state.workbook[state.activeSheet];
+  const rows = getProcessedRows();
+
+  // Header
+  const thead = document.querySelector("#dataTable thead tr");
+  thead.innerHTML = sheet.headers.map(h => {
+    const type = sheet.types[h];
+    const sortCls = state.sortCol === h ? (state.sortDir === "asc" ? "sorted-asc" : "sorted-desc") : "";
+    const ind = state.sortCol === h ? (state.sortDir === "asc" ? "▲" : "▼") : "⇅";
+    return `<th data-col="${escapeHtml(h)}" class="${sortCls}">
+      <div class="flex items-center justify-between gap-2">
+        <span>${escapeHtml(h)}</span>
+        <span class="flex items-center gap-1.5">
+          <span class="pill pill-${type}">${type}</span>
+          <span class="sort-indicator">${ind}</span>
+        </span>
+      </div>
+    </th>`;
+  }).join("");
+
+  // Body
+  const tbody = document.querySelector("#dataTable tbody");
+  if (rows.length === 0) {
+    tbody.innerHTML = "";
+    $("emptyState").classList.remove("hidden");
+  } else {
+    $("emptyState").classList.add("hidden");
+    const maxRows = 1000; // cap DOM for performance
+    const sliced = rows.slice(0, maxRows);
+    tbody.innerHTML = sliced.map(r =>
+      `<tr>${sheet.headers.map((h, i) => {
+        const cell = formatCell(r[i], sheet.types[h]);
+        return `<td class="${cell.cls}">${cell.html}</td>`;
+      }).join("")}</tr>`
+    ).join("");
+    if (rows.length > maxRows) {
+      tbody.innerHTML += `<tr><td colspan="${sheet.headers.length}" class="text-center text-[color:var(--text-2)] text-xs py-3">Showing first ${maxRows} of ${rows.length.toLocaleString()} rows — refine your search to see more</td></tr>`;
+    }
+  }
+
+  // Row/col count
+  $("rowCountLabel").textContent = `${rows.length.toLocaleString()} rows`;
+  $("colCountLabel").textContent = `${sheet.headers.length} cols`;
+
+  // Sort handlers
+  document.querySelectorAll("#dataTable thead th").forEach(th => {
+    th.addEventListener("click", () => {
+      const col = th.dataset.col;
+      if (state.sortCol === col) {
+        state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        state.sortCol = col;
+        state.sortDir = "asc";
+      }
+      renderSheet();
+    });
+  });
+
+  // Rebuild chart selectors
+  rebuildChartSelectors();
+  renderCharts();
+}
+
+/* ---------- Charts ---------- */
+function rebuildChartSelectors() {
+  const sheet = state.workbook[state.activeSheet];
+  const xSel = $("chartXSelect");
+  const pSel = $("chartPieSelect");
+  xSel.innerHTML = sheet.headers.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join("");
+  pSel.innerHTML = sheet.headers.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join("");
+
+  // Default: pick first string col for pie, first num col for bar
+  const firstStr = sheet.headers.find(h => sheet.types[h] === "str");
+  const firstNum = sheet.headers.find(h => sheet.types[h] === "num");
+  if (firstStr) pSel.value = firstStr;
+  if (firstNum) xSel.value = firstNum;
+  else if (firstStr) xSel.value = firstStr;
+
+  $("chartXLabel").textContent = xSel.value;
+  $("chartPieLabel").textContent = pSel.value;
+}
+
+function renderCharts() {
+  const sheet = state.workbook[state.activeSheet];
+  const xCol = $("chartXSelect").value;
+  const pCol = $("chartPieSelect").value;
+  $("chartXLabel").textContent = xCol;
+  $("chartPieLabel").textContent = pCol;
+
+  // BAR chart: aggregate sum of numeric column grouped by selected dimension (if dimension is non-numeric)
+  // If selected X col is numeric, just show top values
+  const xi = sheet.headers.indexOf(xCol);
+  const pi = sheet.headers.indexOf(pCol);
+
+  // BAR — top 10 groups by count of xCol
+  const barAgg = {};
+  sheet.rows.forEach(r => {
+    const k = r[xi];
+    if (k === null || k === undefined || k === "") return;
+    const key = String(k).length > 24 ? String(k).slice(0, 22) + "…" : String(k);
+    barAgg[key] = (barAgg[key] || 0) + 1;
+  });
+  const barEntries = Object.entries(barAgg).sort((a,b) => b[1] - a[1]).slice(0, 10);
+  drawBarChart(barEntries.map(e => e[0]), barEntries.map(e => e[1]), `Count by ${xCol}`);
+
+  // PIE — top 7 groups by count of pCol
+  const pieAgg = {};
+  sheet.rows.forEach(r => {
+    const k = r[pi];
+    if (k === null || k === undefined || k === "") return;
+    const key = String(k).length > 24 ? String(k).slice(0, 22) + "…" : String(k);
+    pieAgg[key] = (pieAgg[key] || 0) + 1;
+  });
+  const pieEntries = Object.entries(pieAgg).sort((a,b) => b[1] - a[1]).slice(0, 7);
+  drawPieChart(pieEntries.map(e => e[0]), pieEntries.map(e => e[1]), `Distribution of ${pCol}`);
+}
+
+const palette = ["#7c3aed", "#ec4899", "#06b6d4", "#fcd34d", "#86efac", "#f0abfc", "#60a5fa", "#fb923c", "#a78bfa", "#5eead4"];
+
+function drawBarChart(labels, data, title) {
+  const ctx = $("barChart").getContext("2d");
+  if (state.barChart) state.barChart.destroy();
+  state.barChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: title,
+        data,
+        backgroundColor: labels.map((_, i) => palette[i % palette.length] + "cc"),
+        borderColor: labels.map((_, i) => palette[i % palette.length]),
+        borderWidth: 1.5,
+        borderRadius: 6,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: "rgba(13,18,48,0.95)", borderColor: "rgba(255,255,255,0.1)", borderWidth: 1 },
+      },
+      scales: {
+        x: { ticks: { color: "#a5adce", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.04)" } },
+        y: { ticks: { color: "#a5adce", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.06)" }, beginAtZero: true },
+      },
+    },
+  });
+}
+
+function drawPieChart(labels, data, title) {
+  const ctx = $("pieChart").getContext("2d");
+  if (state.pieChart) state.pieChart.destroy();
+  state.pieChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{
+        label: title,
+        data,
+        backgroundColor: labels.map((_, i) => palette[i % palette.length] + "dd"),
+        borderColor: "rgba(13,18,48,0.8)",
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "60%",
+      plugins: {
+        legend: { position: "right", labels: { color: "#a5adce", font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { backgroundColor: "rgba(13,18,48,0.95)", borderColor: "rgba(255,255,255,0.1)", borderWidth: 1 },
+      },
+    },
+  });
+}
+
+/* ---------- Loading helpers ---------- */
+function showLoading() {
+  $("inputSection").classList.add("hidden");
+  $("dashboardSection").classList.add("hidden");
+  $("loadingSection").classList.remove("hidden");
+}
+function hideLoading() {
+  $("loadingSection").classList.add("hidden");
+}
+
+/* ---------- Export CSV ---------- */
+function exportCsv() {
+  if (!state.workbook || !state.activeSheet) return;
+  const sheet = state.workbook[state.activeSheet];
+  const rows = getProcessedRows();
+  const lines = [sheet.headers.map(csvQuote).join(",")];
+  rows.forEach(r => lines.push(sheet.headers.map((_, i) => csvQuote(r[i])).join(",")));
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${state.fileName}-${state.activeSheet}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast("Exported " + state.activeSheet + " as CSV", "success");
+}
+function csvQuote(v) {
+  if (v === null || v === undefined) return "";
+  const s = String(v);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+/* ---------- Reset ---------- */
+function reset() {
+  state.workbook = null;
+  state.sheetNames = [];
+  state.activeSheet = null;
+  state.searchTerm = "";
+  state.sortCol = null;
+  if (state.barChart) state.barChart.destroy();
+  if (state.pieChart) state.pieChart.destroy();
+  state.barChart = state.pieChart = null;
+  $("inputSection").classList.remove("hidden");
+  $("dashboardSection").classList.add("hidden");
+  $("loadingSection").classList.add("hidden");
+  $("exportCsvBtn").classList.add("hidden");
+  $("resetBtn").classList.add("hidden");
+  $("sheetUrl").value = "";
+  $("fileInput").value = "";
+}
+
+/* ---------- Demo data ---------- */
+function loadDemo(kind) {
+  const demos = {
+    sales: {
+      "Pipeline": [
+        ["Deal ID","Customer","Stage","Amount","Close Date","Owner","Region"],
+        ["D-1001","Acme Corp","Closed Won",48200,"2025-03-12","Alice Wong","NA"],
+        ["D-1002","Globex","Negotiation",125000,"2025-04-08","Bob Chen","APAC"],
+        ["D-1003","Initech","Proposal",67000,"2025-04-22","Alice Wong","EU"],
+        ["D-1004","Umbrella","Discovery",23000,"2025-05-15","Carol Diaz","NA"],
+        ["D-1005","Soylent","Closed Won",98000,"2025-02-28","Bob Chen","APAC"],
+        ["D-1006","Hooli","Negotiation",210000,"2025-05-30","David Park","NA"],
+        ["D-1007","Stark Inc","Closed Lost",54000,"2025-01-19","Alice Wong","EU"],
+        ["D-1008","Wayne Ent","Proposal",176000,"2025-06-10","Carol Diaz","NA"],
+        ["D-1009","Lex Corp","Discovery",42000,"2025-06-25","David Park","APAC"],
+        ["D-1010","Wonka","Closed Won",61500,"2025-03-30","Bob Chen","EU"],
+        ["D-1011","Tyrell","Negotiation",188000,"2025-07-12","Alice Wong","NA"],
+        ["D-1012","Cyberdyne","Proposal",99000,"2025-07-20","David Park","APAC"],
+      ],
+      "Quarterly Summary": [
+        ["Quarter","Deals Won","Revenue","Pipeline"],
+        ["Q1 2025",4,207700,420000],
+        ["Q2 2025",2,288000,510000],
+        ["Q3 2025",0,0,287000],
+        ["Q4 2025",0,0,0],
+      ]
+    },
+    hr: {
+      "Employees": [
+        ["ID","Name","Department","Title","Salary","Hire Date","Remote","Country"],
+        [1,"Olivia Martinez","Engineering","Senior Engineer",142000,"2019-09-15",true,"USA"],
+        [2,"Liam Thompson","Design","Design Lead",118000,"2020-04-02",false,"UK"],
+        [3,"Sophia Patel","Engineering","Staff Engineer",165000,"2018-11-08",true,"India"],
+        [4,"Noah Kim","Sales","Account Exec",92000,"2021-06-21",true,"Korea"],
+        [5,"Ava Müller","Marketing","Brand Manager",108000,"2020-01-13",false,"Germany"],
+        [6,"Ethan Rossi","Engineering","Junior Engineer",84000,"2022-08-01",true,"Italy"],
+        [7,"Mia Chen","HR","HR Business Partner",95000,"2019-03-19",false,"Singapore"],
+        [8,"Lucas Silva","Sales","Sales Director",148000,"2017-12-05",true,"Brazil"],
+        [9,"Isabella Khan","Finance","Senior Analyst",112000,"2021-10-27",false,"UAE"],
+        [10,"Mason Brown","Engineering","Engineering Manager",158000,"2018-05-09",true,"USA"],
+        [11,"Charlotte Dubois","Design","Product Designer",98000,"2021-02-14",true,"France"],
+        [12,"Amelia Nakamura","Operations","Ops Lead",122000,"2019-07-30",false,"Japan"],
+      ]
+    },
+    finance: {
+      "P&L 2025": [
+        ["Month","Revenue","COGS","Gross Profit","OpEx","Net Income"],
+        ["Jan",420000,168000,252000,140000,112000],
+        ["Feb",445000,178000,267000,145000,122000],
+        ["Mar",510000,204000,306000,158000,148000],
+        ["Apr",498000,199000,299000,152000,147000],
+        ["May",567000,226800,340200,168000,172200],
+        ["Jun",612000,244800,367200,176000,191200],
+        ["Jul",589000,235600,353400,170000,183400],
+        ["Aug",645000,258000,387000,184000,203000],
+        ["Sep",678000,271200,406800,192000,214800],
+        ["Oct",712000,284800,427200,198000,229200],
+        ["Nov",689000,275600,413400,195000,218400],
+        ["Dec",798000,319200,478800,221000,257800],
+      ],
+      "Balance Sheet": [
+        ["Item","Q1","Q2","Q3","Q4"],
+        ["Cash & Equivalents",1240000,1380000,1450000,1620000],
+        ["Accounts Receivable",485000,512000,498000,567000],
+        ["Inventory",312000,328000,305000,358000],
+        ["Property Plant Equip",2100000,2150000,2180000,2220000],
+        ["Accounts Payable",298000,312000,287000,335000],
+        ["Long-term Debt",980000,950000,920000,890000],
+        ["Equity",2861000,3108000,3336000,3640000],
+      ]
+    }
+  };
+  const data = demos[kind];
+  if (!data) return;
+  state.fileName = kind + "-demo";
+  showLoading();
+  setTimeout(() => ingestSheets(data), 300);
+}
+
+/* ---------- Event wiring ---------- */
+function wire() {
+  const dz = $("dropzone");
+  const fileInput = $("fileInput");
+  dz.addEventListener("click", () => fileInput.click());
+  dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("dragging"); });
+  dz.addEventListener("dragleave", () => dz.classList.remove("dragging"));
+  dz.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dz.classList.remove("dragging");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  $("loadUrlBtn").addEventListener("click", () => {
+    const url = $("sheetUrl").value.trim();
+    if (!url) { showToast("Paste a Google Sheets URL first", "error"); return; }
+    loadFromGoogleSheets(url);
+  });
+  $("sheetUrl").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("loadUrlBtn").click();
+  });
+
+  $("searchInput").addEventListener("input", (e) => {
+    state.searchTerm = e.target.value;
+    renderSheet();
+  });
+
+  $("chartXSelect").addEventListener("change", renderCharts);
+  $("chartPieSelect").addEventListener("change", renderCharts);
+
+  $("exportCsvBtn").addEventListener("click", exportCsv);
+  $("resetBtn").addEventListener("click", reset);
+
+  document.querySelectorAll(".demo-btn").forEach(b => b.addEventListener("click", () => loadDemo(b.dataset.demo)));
+}
+
+document.addEventListener("DOMContentLoaded", wire);
+</script>
+</body>
+</html>
