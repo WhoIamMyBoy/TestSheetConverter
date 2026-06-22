@@ -7,6 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <style>
   :root {
     --bg-0: #07091a;
@@ -19,67 +20,67 @@
     --text-0: #f5f7ff;
     --text-1: #a5adce;
     --text-2: #6b7393;
+    --row-stripe: rgba(255,255,255,0.015);
+  }
+  html[data-theme="aurora"] {
+    --bg-0: #0a1f1a; --bg-1: #0d2b25;
+    --accent-a: #10b981; --accent-b: #14b8a6; --accent-c: #84cc16;
+    --glass: rgba(255, 255, 255, 0.05);
+  }
+  html[data-theme="sunset"] {
+    --bg-0: #1a0a0f; --bg-1: #2b0f17;
+    --accent-a: #f97316; --accent-b: #ef4444; --accent-c: #facc15;
+    --glass: rgba(255, 255, 255, 0.05);
+  }
+  html[data-theme="forest"] {
+    --bg-0: #0a1a0d; --bg-1: #0d2b15;
+    --accent-a: #22c55e; --accent-b: #eab308; --accent-c: #14b8a6;
+    --glass: rgba(255, 255, 255, 0.05);
+  }
+  html[data-theme="light"] {
+    --bg-0: #f3f4fb; --bg-1: #e9ebf7;
+    --glass: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(15, 23, 42, 0.10);
+    --text-0: #0f172a; --text-1: #475569; --text-2: #94a3b8;
+    --row-stripe: rgba(15, 23, 42, 0.018);
   }
   * { box-sizing: border-box; }
   html, body {
-    margin: 0;
-    padding: 0;
+    margin: 0; padding: 0;
     background: var(--bg-0);
     color: var(--text-0);
-    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
+    transition: background 0.4s ease, color 0.3s ease;
   }
+  body { font-size: 14px; }
 
-  /* Animated aurora background */
-  .aurora {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    overflow: hidden;
-    pointer-events: none;
-  }
+  .aurora { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
   .aurora::before, .aurora::after, .aurora .blob3 {
-    content: "";
-    position: absolute;
-    width: 60vw;
-    height: 60vw;
-    border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.55;
-    will-change: transform;
+    content: ""; position: absolute;
+    width: 60vw; height: 60vw; border-radius: 50%;
+    filter: blur(120px); opacity: 0.5; will-change: transform;
   }
-  .aurora::before {
-    background: radial-gradient(circle at center, #7c3aed, transparent 60%);
-    top: -20vw; left: -15vw;
-    animation: floatA 22s ease-in-out infinite alternate;
-  }
-  .aurora::after {
-    background: radial-gradient(circle at center, #ec4899, transparent 60%);
-    bottom: -25vw; right: -10vw;
-    animation: floatB 26s ease-in-out infinite alternate;
-  }
-  .aurora .blob3 {
-    background: radial-gradient(circle at center, #06b6d4, transparent 60%);
-    top: 40vh; left: 30vw;
-    opacity: 0.35;
-    animation: floatC 30s ease-in-out infinite alternate;
-  }
-  @keyframes floatA { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(10vw, 8vh) scale(1.15); } }
-  @keyframes floatB { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(-8vw, -6vh) scale(1.2); } }
-  @keyframes floatC { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(-6vw, 10vh) scale(0.9); } }
+  .aurora::before { background: radial-gradient(circle at center, var(--accent-a), transparent 60%); top: -20vw; left: -15vw; animation: floatA 22s ease-in-out infinite alternate; }
+  .aurora::after { background: radial-gradient(circle at center, var(--accent-b), transparent 60%); bottom: -25vw; right: -10vw; animation: floatB 26s ease-in-out infinite alternate; }
+  .aurora .blob3 { background: radial-gradient(circle at center, var(--accent-c), transparent 60%); top: 40vh; left: 30vw; opacity: 0.3; animation: floatC 30s ease-in-out infinite alternate; }
+  @keyframes floatA { 0%{transform:translate(0,0) scale(1);} 100%{transform:translate(10vw,8vh) scale(1.15);} }
+  @keyframes floatB { 0%{transform:translate(0,0) scale(1);} 100%{transform:translate(-8vw,-6vh) scale(1.2);} }
+  @keyframes floatC { 0%{transform:translate(0,0) scale(1);} 100%{transform:translate(-6vw,10vh) scale(0.9);} }
 
-  /* Subtle grid overlay */
   .grid-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
     background-image:
       linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
     background-size: 48px 48px;
     mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
-    pointer-events: none;
+  }
+  html[data-theme="light"] .grid-overlay {
+    background-image:
+      linear-gradient(rgba(15,23,42,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15,23,42,0.04) 1px, transparent 1px);
   }
 
   .glass {
@@ -89,229 +90,236 @@
     border: 1px solid var(--glass-border);
     border-radius: 18px;
   }
-
   .gradient-text {
-    background: linear-gradient(120deg, #c4b5fd 0%, #f0abfc 50%, #67e8f9 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    background: linear-gradient(120deg, var(--accent-a), var(--accent-b), var(--accent-c));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-
   .btn-primary {
     background: linear-gradient(120deg, var(--accent-a), var(--accent-b));
-    color: white;
-    border: none;
-    padding: 12px 22px;
-    border-radius: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
-    box-shadow: 0 8px 28px -8px rgba(124, 58, 237, 0.6);
+    color: white; border: none; padding: 11px 20px; border-radius: 11px;
+    font-weight: 600; cursor: pointer; font-size: 13px;
+    transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
+    box-shadow: 0 8px 28px -8px rgba(124,58,237,.5);
   }
-  .btn-primary:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 14px 36px -8px rgba(236, 72, 153, 0.6); }
+  .btn-primary:hover { transform: translateY(-2px); filter: brightness(1.08); }
   .btn-primary:active { transform: translateY(0); }
-  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
+  .btn-primary:disabled { opacity: .55; cursor: not-allowed; transform: none; }
   .btn-ghost {
-    background: rgba(255,255,255,0.05);
-    color: var(--text-0);
-    border: 1px solid var(--glass-border);
-    padding: 10px 18px;
-    border-radius: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s ease;
+    background: rgba(255,255,255,.05); color: var(--text-0);
+    border: 1px solid var(--glass-border); padding: 9px 16px; border-radius: 11px;
+    font-weight: 500; cursor: pointer; font-size: 13px;
+    transition: all .15s ease;
   }
-  .btn-ghost:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+  html[data-theme="light"] .btn-ghost { background: rgba(15,23,42,.04); }
+  .btn-ghost:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.2); }
+  html[data-theme="light"] .btn-ghost:hover { background: rgba(15,23,42,.08); }
+  .btn-ghost.active {
+    background: linear-gradient(120deg, rgba(124,58,237,.4), rgba(236,72,153,.3));
+    border-color: rgba(236,72,153,.4); color: white;
+  }
 
-  .dropzone {
-    border: 2px dashed rgba(255,255,255,0.18);
-    transition: all 0.2s ease;
-  }
-  .dropzone.dragging {
-    border-color: var(--accent-b);
-    background: rgba(236, 72, 153, 0.08);
-    transform: scale(1.01);
-  }
+  .dropzone { border: 2px dashed rgba(255,255,255,.18); transition: all .2s ease; }
+  html[data-theme="light"] .dropzone { border-color: rgba(15,23,42,.18); }
+  .dropzone.dragging { border-color: var(--accent-b); background: rgba(236,72,153,.08); transform: scale(1.01); }
 
   .tab-btn {
-    padding: 8px 16px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-1);
-    background: transparent;
-    border: 1px solid transparent;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.15s ease;
+    padding: 7px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 500;
+    color: var(--text-1); background: transparent; border: 1px solid transparent;
+    cursor: pointer; white-space: nowrap; transition: all .15s ease;
   }
-  .tab-btn:hover { color: var(--text-0); background: rgba(255,255,255,0.04); }
+  .tab-btn:hover { color: var(--text-0); background: rgba(255,255,255,.04); }
   .tab-btn.active {
     color: white;
-    background: linear-gradient(120deg, rgba(124, 58, 237, 0.45), rgba(236, 72, 153, 0.35));
-    border-color: rgba(236, 72, 153, 0.4);
-    box-shadow: 0 4px 18px -6px rgba(124, 58, 237, 0.6);
+    background: linear-gradient(120deg, rgba(124,58,237,.45), rgba(236,72,153,.35));
+    border-color: rgba(236,72,153,.4);
+    box-shadow: 0 4px 18px -6px rgba(124,58,237,.5);
   }
 
-  table.data-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 13px;
-  }
+  table.data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12.5px; }
   table.data-table thead th {
-    position: sticky;
-    top: 0;
-    background: rgba(13, 18, 48, 0.95);
-    backdrop-filter: blur(8px);
-    text-align: left;
-    padding: 12px 14px;
-    color: var(--text-1);
-    font-weight: 600;
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    cursor: pointer;
-    user-select: none;
-    z-index: 2;
+    position: sticky; top: 0; background: rgba(13,18,48,.96); backdrop-filter: blur(8px);
+    text-align: left; padding: 10px 12px; color: var(--text-1);
+    font-weight: 600; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,.08); cursor: pointer; user-select: none; z-index: 2;
   }
-  table.data-table thead th:hover { color: var(--text-0); background: rgba(124, 58, 237, 0.15); }
-  table.data-table thead th .sort-indicator { opacity: 0.4; margin-left: 6px; font-size: 10px; }
-  table.data-table thead th.sorted-asc .sort-indicator,
-  table.data-table thead th.sorted-desc .sort-indicator { opacity: 1; color: #f0abfc; }
+  html[data-theme="light"] table.data-table thead th { background: rgba(255,255,255,.96); border-bottom-color: rgba(15,23,42,.1); }
+  table.data-table thead th:hover { color: var(--text-0); background: rgba(124,58,237,.15); }
+  table.data-table thead th .sort-ind { opacity: .35; margin-left: 5px; font-size: 9px; }
+  table.data-table thead th.sorted-asc .sort-ind,
+  table.data-table thead th.sorted-desc .sort-ind { opacity: 1; color: #f0abfc; }
   table.data-table tbody td {
-    padding: 10px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    color: var(--text-0);
-    vertical-align: top;
-    max-width: 380px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.05);
+    color: var(--text-0); vertical-align: top;
+    max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  table.data-table tbody tr { transition: background 0.12s ease; }
-  table.data-table tbody tr:hover { background: rgba(124, 58, 237, 0.08); }
+  html[data-theme="light"] table.data-table tbody td { border-bottom-color: rgba(15,23,42,.06); }
+  table.data-table tbody tr:nth-child(even) { background: var(--row-stripe); }
+  table.data-table tbody tr:hover { background: rgba(124,58,237,.08); }
   table.data-table tbody td.num { color: #67e8f9; font-variant-numeric: tabular-nums; text-align: right; }
   table.data-table tbody td.date { color: #fcd34d; }
   table.data-table tbody td.bool { color: #86efac; font-style: italic; }
   table.data-table tbody td.null-cell { color: var(--text-2); font-style: italic; }
+  html[data-theme="light"] table.data-table tbody td.num { color: #0891b2; }
+  html[data-theme="light"] table.data-table tbody td.date { color: #b45309; }
+  html[data-theme="light"] table.data-table tbody td.bool { color: #047857; }
+
+  /* density */
+  html[data-density="compact"] table.data-table tbody td { padding: 5px 10px; font-size: 11.5px; }
+  html[data-density="compact"] table.data-table thead th { padding: 7px 10px; font-size: 10px; }
+  html[data-density="spacious"] table.data-table tbody td { padding: 13px 16px; font-size: 13.5px; }
+  html[data-density="spacious"] table.data-table thead th { padding: 13px 16px; }
+
+  /* heatmap cell */
+  .heatmap-cell { position: relative; }
+  .heatmap-cell .heatmap-bar {
+    position: absolute; inset: 0; opacity: .25; pointer-events: none;
+  }
 
   .pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
   }
-  .pill-num { background: rgba(103, 232, 249, 0.12); color: #67e8f9; border: 1px solid rgba(103, 232, 249, 0.25); }
-  .pill-date { background: rgba(252, 211, 77, 0.12); color: #fcd34d; border: 1px solid rgba(252, 211, 77, 0.25); }
-  .pill-str  { background: rgba(196, 181, 253, 0.12); color: #c4b5fd; border: 1px solid rgba(196, 181, 253, 0.25); }
-  .pill-bool { background: rgba(134, 239, 172, 0.12); color: #86efac; border: 1px solid rgba(134, 239, 172, 0.25); }
+  .pill-num { background: rgba(103,232,249,.12); color: #67e8f9; border: 1px solid rgba(103,232,249,.25); }
+  .pill-date { background: rgba(252,211,77,.12); color: #fcd34d; border: 1px solid rgba(252,211,77,.25); }
+  .pill-str  { background: rgba(196,181,253,.12); color: #c4b5fd; border: 1px solid rgba(196,181,253,.25); }
+  .pill-bool { background: rgba(134,239,172,.12); color: #86efac; border: 1px solid rgba(134,239,172,.25); }
+  html[data-theme="light"] .pill-num { color: #0891b2; } html[data-theme="light"] .pill-date { color: #b45309; }
+  html[data-theme="light"] .pill-str { color: #7c3aed; } html[data-theme="light"] .pill-bool { color: #047857; }
 
   .scroll-x { overflow-x: auto; }
   .scroll-x::-webkit-scrollbar, .scroll-y::-webkit-scrollbar { height: 8px; width: 8px; }
-  .scroll-x::-webkit-scrollbar-thumb, .scroll-y::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 999px; }
-  .scroll-x::-webkit-scrollbar-thumb:hover, .scroll-y::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+  .scroll-x::-webkit-scrollbar-thumb, .scroll-y::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 999px; }
+  .scroll-x::-webkit-scrollbar-thumb:hover, .scroll-y::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.25); }
+  html[data-theme="light"] .scroll-x::-webkit-scrollbar-thumb, html[data-theme="light"] .scroll-y::-webkit-scrollbar-thumb { background: rgba(15,23,42,.2); }
 
-  .fade-in { animation: fadeIn 0.5s ease both; }
+  .fade-in { animation: fadeIn .45s ease both; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-  .skeleton {
-    background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.04) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s infinite;
-    border-radius: 8px;
-  }
-  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
+  .toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
   .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(40px);
-    background: rgba(13, 18, 48, 0.95);
-    backdrop-filter: blur(14px);
-    border: 1px solid var(--glass-border);
-    color: var(--text-0);
-    padding: 12px 20px;
-    border-radius: 12px;
-    font-size: 14px;
-    box-shadow: 0 12px 40px -10px rgba(0,0,0,0.6);
-    z-index: 100;
-    opacity: 0;
-    transition: all 0.3s ease;
-    max-width: 90vw;
+    background: rgba(13,18,48,.95); backdrop-filter: blur(14px);
+    border: 1px solid var(--glass-border); color: var(--text-0);
+    padding: 11px 18px; border-radius: 12px; font-size: 13px;
+    box-shadow: 0 12px 40px -10px rgba(0,0,0,.6);
+    opacity: 0; transform: translateY(20px);
+    transition: all .3s ease; max-width: 90vw;
   }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .toast.error { border-color: rgba(239, 68, 68, 0.5); }
-  .toast.success { border-color: rgba(34, 197, 94, 0.5); }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { border-color: rgba(239,68,68,.5); }
+  .toast.success { border-color: rgba(34,197,94,.5); }
 
   .spinner {
-    width: 18px; height: 18px;
-    border: 2px solid rgba(255,255,255,0.2);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    display: inline-block;
-    vertical-align: middle;
+    width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.2);
+    border-top-color: white; border-radius: 50%;
+    animation: spin .8s linear infinite; display: inline-block; vertical-align: middle;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  input.field, select.field {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--glass-border);
-    color: var(--text-0);
-    padding: 12px 14px;
-    border-radius: 12px;
-    font-size: 14px;
-    width: 100%;
-    outline: none;
-    transition: all 0.15s ease;
+  input.field, select.field, textarea.field {
+    background: rgba(255,255,255,.04); border: 1px solid var(--glass-border); color: var(--text-0);
+    padding: 10px 13px; border-radius: 11px; font-size: 13px; width: 100%; outline: none;
+    transition: all .15s ease; font-family: inherit;
   }
-  input.field:focus, select.field:focus {
-    border-color: var(--accent-b);
-    background: rgba(255,255,255,0.06);
-    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.18);
+  html[data-theme="light"] input.field, html[data-theme="light"] select.field, html[data-theme="light"] textarea.field { background: rgba(255,255,255,.7); }
+  input.field:focus, select.field:focus, textarea.field:focus {
+    border-color: var(--accent-b); background: rgba(255,255,255,.06);
+    box-shadow: 0 0 0 3px rgba(236,72,153,.18);
   }
-  input.field::placeholder { color: var(--text-2); }
+  input.field::placeholder, textarea.field::placeholder { color: var(--text-2); }
 
-  .stat-card {
-    position: relative;
-    overflow: hidden;
-  }
+  .stat-card { position: relative; overflow: hidden; }
   .stat-card::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent-a), var(--accent-b), var(--accent-c));
-    opacity: 0.7;
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent-a), var(--accent-b), var(--accent-c)); opacity: .7;
   }
+
+  .switch { position: relative; display: inline-block; width: 38px; height: 22px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider {
+    position: absolute; cursor: pointer; inset: 0; background: rgba(255,255,255,.12);
+    border-radius: 22px; transition: .25s;
+  }
+  .switch .slider::before {
+    content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px;
+    background: white; border-radius: 50%; transition: .25s;
+  }
+  .switch input:checked + .slider { background: linear-gradient(120deg, var(--accent-a), var(--accent-b)); }
+  .switch input:checked + .slider::before { transform: translateX(16px); }
+
+  /* drawer */
+  .drawer-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(2px);
+    z-index: 150; opacity: 0; pointer-events: none; transition: opacity .25s ease;
+  }
+  .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 100%; max-width: 460px;
+    background: var(--bg-1); border-left: 1px solid var(--glass-border);
+    transform: translateX(100%); transition: transform .3s cubic-bezier(.4,0,.2,1);
+    z-index: 160; display: flex; flex-direction: column;
+  }
+  .drawer.open { transform: translateX(0); }
+
+  .chat-msg { padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.55; max-width: 90%; }
+  .chat-msg.user { background: linear-gradient(120deg, rgba(124,58,237,.25), rgba(236,72,153,.18)); align-self: flex-end; border: 1px solid rgba(236,72,153,.25); }
+  .chat-msg.ai { background: rgba(255,255,255,.04); align-self: flex-start; border: 1px solid var(--glass-border); }
+  .chat-msg.ai p { margin: 0 0 8px 0; } .chat-msg.ai p:last-child { margin-bottom: 0; }
+  .chat-msg.ai code { background: rgba(255,255,255,.08); padding: 1px 5px; border-radius: 4px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .chat-msg.ai pre { background: rgba(0,0,0,.35); padding: 8px 10px; border-radius: 8px; overflow-x: auto; margin: 6px 0; }
+  .chat-msg.ai pre code { background: none; padding: 0; }
+  .chat-msg.ai table { border-collapse: collapse; margin: 6px 0; font-size: 12px; }
+  .chat-msg.ai th, .chat-msg.ai td { border: 1px solid rgba(255,255,255,.15); padding: 4px 8px; }
+  .chat-msg.ai ul, .chat-msg.ai ol { margin: 6px 0; padding-left: 18px; }
+  .chat-msg.system { background: rgba(252,211,77,.08); border: 1px dashed rgba(252,211,77,.35); color: var(--text-1); font-size: 12px; align-self: center; text-align: center; max-width: 95%; }
+
+  .suggestion-chip {
+    padding: 6px 11px; border-radius: 999px; font-size: 11.5px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--glass-border);
+    color: var(--text-1); cursor: pointer; transition: all .15s ease; white-space: nowrap;
+  }
+  .suggestion-chip:hover { background: rgba(124,58,237,.18); color: var(--text-0); border-color: rgba(124,58,237,.35); }
+
+  mark { background: rgba(252,211,77,.35); color: inherit; padding: 0 2px; border-radius: 2px; }
+
+  .col-filter-dropdown {
+    position: absolute; top: 100%; left: 0; min-width: 220px; max-height: 320px;
+    background: var(--bg-1); border: 1px solid var(--glass-border); border-radius: 12px;
+    box-shadow: 0 12px 36px -8px rgba(0,0,0,.5); z-index: 50; overflow: hidden; padding: 8px;
+  }
+  .col-filter-dropdown .options { max-height: 220px; overflow-y: auto; }
+  .col-filter-dropdown label { display: flex; align-items: center; gap: 8px; padding: 5px 6px; font-size: 12px; border-radius: 6px; cursor: pointer; }
+  .col-filter-dropdown label:hover { background: rgba(255,255,255,.05); }
 
   .hidden { display: none !important; }
+  .checkbox-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px;
+    font-size: 11.5px; background: rgba(255,255,255,.04); border: 1px solid var(--glass-border); cursor: pointer;
+  }
+  .checkbox-pill.checked { background: rgba(124,58,237,.22); border-color: rgba(124,58,237,.45); color: var(--text-0); }
+
+  .pagination-btn { min-width: 32px; height: 32px; padding: 0 10px; border-radius: 8px; font-size: 12.5px; font-weight: 500; cursor: pointer; background: rgba(255,255,255,.04); border: 1px solid var(--glass-border); color: var(--text-1); transition: all .15s ease; }
+  .pagination-btn:hover:not(:disabled) { background: rgba(255,255,255,.08); color: var(--text-0); }
+  .pagination-btn.active { background: linear-gradient(120deg, var(--accent-a), var(--accent-b)); color: white; border-color: transparent; }
+  .pagination-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  kbd { background: rgba(255,255,255,.08); border: 1px solid var(--glass-border); border-radius: 4px; padding: 1px 5px; font-size: 10.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  .progress-track { height: 6px; background: rgba(255,255,255,.08); border-radius: 999px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-a), var(--accent-b)); transition: width .3s ease; }
 </style>
 </head>
 <body>
   <div class="aurora"><div class="blob3"></div></div>
   <div class="grid-overlay"></div>
 
-  <main class="relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-8 md:py-12">
+  <main class="relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-7 md:py-10">
 
     <!-- Header -->
-    <header class="flex items-center justify-between mb-10 fade-in">
+    <header class="flex items-center justify-between mb-8 fade-in gap-3 flex-wrap">
       <div class="flex items-center gap-3">
-        <div class="w-11 h-11 rounded-2xl flex items-center justify-center" style="background: linear-gradient(120deg, var(--accent-a), var(--accent-b)); box-shadow: 0 8px 24px -6px rgba(124,58,237,0.6);">
+        <div class="w-11 h-11 rounded-2xl flex items-center justify-center" style="background: linear-gradient(120deg, var(--accent-a), var(--accent-b)); box-shadow: 0 8px 24px -6px rgba(124,58,237,.6);">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <line x1="3" y1="9" x2="21" y2="9"/>
-            <line x1="3" y1="15" x2="21" y2="15"/>
-            <line x1="9" y1="3" x2="9" y2="21"/>
+            <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>
           </svg>
         </div>
         <div>
@@ -319,10 +327,21 @@
           <p class="text-xs text-[color:var(--text-2)] -mt-0.5">Live Google Sheets & Spreadsheet Dashboard</p>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <button id="exportCsvBtn" class="btn-ghost hidden text-sm">
-          <span>Export CSV</span>
+      <div class="flex items-center gap-2 flex-wrap">
+        <select id="themeSelect" class="field text-xs py-2 px-2.5" style="width:auto;" title="Theme">
+          <option value="midnight">Midnight</option>
+          <option value="aurora">Aurora</option>
+          <option value="sunset">Sunset</option>
+          <option value="forest">Forest</option>
+          <option value="light">Light</option>
+        </select>
+        <button id="aiChatBtn" class="btn-ghost hidden text-sm" title="Open AI Assistant (Cmd+J)">
+          <span class="inline-flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 1 3 3v1h1a3 3 0 0 1 3 3v1h1a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3h-3a3 3 0 0 1-3-3v-1H9a3 3 0 0 1-3-3v-1H5a3 3 0 0 1-3-3v-3a3 3 0 0 1 3-3h1V9a3 3 0 0 1 3-3h1V5a3 3 0 0 1 3-3z"/></svg>
+            AI Assistant
+          </span>
         </button>
+        <button id="exportMenuBtn" class="btn-ghost hidden text-sm">Export</button>
         <button id="resetBtn" class="btn-ghost hidden text-sm">New Sheet</button>
       </div>
     </header>
@@ -331,18 +350,13 @@
     <section id="inputSection" class="fade-in">
       <div class="glass p-6 md:p-9 mb-6">
         <div class="grid md:grid-cols-2 gap-6">
-          <!-- Upload -->
           <div>
             <label class="block text-xs uppercase tracking-wider text-[color:var(--text-2)] font-semibold mb-3">Upload File</label>
-            <div id="dropzone" class="dropzone rounded-2xl p-8 text-center cursor-pointer hover:bg-white/[0.03]">
+            <div id="dropzone" class="dropzone rounded-2xl p-8 text-center cursor-pointer hover:bg-white/[0.03]" role="button" tabindex="0" aria-label="Upload spreadsheet file">
               <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.tsv,.ods" class="hidden" />
               <div class="flex flex-col items-center gap-3">
-                <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background: rgba(124,58,237,0.18);">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/>
-                    <line x1="12" y1="3" x2="12" y2="15"/>
-                  </svg>
+                <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background: rgba(124,58,237,.18);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 </div>
                 <div>
                   <p class="text-sm font-medium text-[color:var(--text-0)]">Drop file or click to browse</p>
@@ -351,23 +365,18 @@
               </div>
             </div>
           </div>
-
-          <!-- URL -->
           <div>
             <label class="block text-xs uppercase tracking-wider text-[color:var(--text-2)] font-semibold mb-3">Or paste Google Sheets URL</label>
             <div class="flex flex-col gap-3">
-              <input type="text" id="sheetUrl" class="field" placeholder="https://docs.google.com/spreadsheets/d/…/edit#gid=0" />
-              <div class="flex items-center gap-2 text-xs text-[color:var(--text-2)]">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                <span>Sheet must be shared as "Anyone with link → Viewer" or published to web.</span>
+              <input type="text" id="sheetUrl" class="field" placeholder="https://docs.google.com/spreadsheets/d/…/edit#gid=0" aria-label="Google Sheets URL" />
+              <div class="flex items-start gap-2 text-xs text-[color:var(--text-2)]">
+                <svg class="mt-0.5 flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>Sheet must be shared as "Anyone with link → Viewer" or published to web. Multiple sheets in one workbook are auto-loaded.</span>
               </div>
-              <button id="loadUrlBtn" class="btn-primary text-sm self-start mt-1">
-                Load from Google Sheets
-              </button>
+              <button id="loadUrlBtn" class="btn-primary text-sm self-start mt-1">Load from Google Sheets</button>
             </div>
           </div>
         </div>
-
         <div class="mt-7 pt-6 border-t border-white/5">
           <p class="text-xs text-[color:var(--text-2)] mb-3 uppercase tracking-wider font-semibold">Try a live demo</p>
           <div class="flex flex-wrap gap-2">
@@ -382,120 +391,210 @@
     <!-- Loading -->
     <section id="loadingSection" class="hidden">
       <div class="glass p-10 text-center">
-        <div class="inline-block">
-          <div class="spinner" style="width:36px;height:36px;border-width:3px;"></div>
-        </div>
+        <div class="spinner" style="width:36px;height:36px;border-width:3px;"></div>
         <p class="mt-4 text-sm text-[color:var(--text-1)]">Loading workbook & analyzing sheets…</p>
       </div>
     </section>
 
     <!-- Dashboard -->
     <section id="dashboardSection" class="hidden">
+
+      <!-- Settings bar -->
+      <div class="glass p-4 mb-5 flex flex-wrap items-center gap-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xs uppercase tracking-wider text-[color:var(--text-2)] font-semibold">View:</span>
+          <select id="viewModeSelect" class="field text-xs py-1.5 px-2.5" style="width:auto;">
+            <option value="single">Single sheet</option>
+            <option value="multi">All visible sheets</option>
+          </select>
+        </div>
+        <div class="h-5 w-px bg-white/10"></div>
+        <label class="flex items-center gap-2 text-xs cursor-pointer">
+          <span class="switch"><input type="checkbox" id="chartsToggle" checked /><span class="slider"></span></span>
+          <span class="text-[color:var(--text-1)]">Charts</span>
+        </label>
+        <label class="flex items-center gap-2 text-xs cursor-pointer">
+          <span class="switch"><input type="checkbox" id="heatmapToggle" checked /><span class="slider"></span></span>
+          <span class="text-[color:var(--text-1)]">Heatmap</span>
+        </label>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-[color:var(--text-2)]">Density</span>
+          <select id="densitySelect" class="field text-xs py-1.5 px-2.5" style="width:auto;">
+            <option value="compact">Compact</option>
+            <option value="normal" selected>Normal</option>
+            <option value="spacious">Spacious</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-[color:var(--text-2)]">Rows</span>
+          <select id="pageSizeSelect" class="field text-xs py-1.5 px-2.5" style="width:auto;">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="500">500</option>
+            <option value="999999">All</option>
+          </select>
+        </div>
+        <div class="ml-auto flex items-center gap-2 flex-wrap" id="sheetVisibilityWrap">
+          <span class="text-xs uppercase tracking-wider text-[color:var(--text-2)] font-semibold">Sheets:</span>
+          <div id="sheetVisibility" class="flex flex-wrap gap-1.5"></div>
+        </div>
+      </div>
+
       <!-- Stats -->
-      <div id="statsGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+      <div id="statsGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5"></div>
 
       <!-- Charts row -->
-      <div class="grid md:grid-cols-2 gap-4 mb-6">
+      <div id="chartsRow" class="grid md:grid-cols-2 gap-4 mb-5">
         <div class="glass p-5">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-semibold text-[color:var(--text-0)]">Auto Chart · <span id="chartXLabel" class="text-[color:var(--text-1)]">—</span></h3>
-            <select id="chartXSelect" class="field text-xs py-1.5 px-2" style="width:auto; background:rgba(255,255,255,0.06);"></select>
+          <div class="flex items-center justify-between mb-3 gap-2">
+            <h3 class="text-sm font-semibold text-[color:var(--text-0)]">Bar · <span id="chartXLabel" class="text-[color:var(--text-1)]">—</span></h3>
+            <select id="chartXSelect" class="field text-xs py-1.5 px-2" style="width:auto; max-width:180px;"></select>
           </div>
           <div class="h-64 relative"><canvas id="barChart"></canvas></div>
         </div>
         <div class="glass p-5">
-          <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center justify-between mb-3 gap-2">
             <h3 class="text-sm font-semibold text-[color:var(--text-0)]">Distribution · <span id="chartPieLabel" class="text-[color:var(--text-1)]">—</span></h3>
-            <select id="chartPieSelect" class="field text-xs py-1.5 px-2" style="width:auto; background:rgba(255,255,255,0.06);"></select>
+            <select id="chartPieSelect" class="field text-xs py-1.5 px-2" style="width:auto; max-width:180px;"></select>
           </div>
           <div class="h-64 relative"><canvas id="pieChart"></canvas></div>
         </div>
       </div>
 
-      <!-- Tabs -->
-      <div class="glass p-5 mb-4">
-        <div class="flex flex-wrap items-center gap-2 mb-4">
-          <span class="text-xs uppercase tracking-wider text-[color:var(--text-2)] font-semibold mr-2">Sheets</span>
-          <div id="tabsContainer" class="flex flex-wrap gap-1.5"></div>
-        </div>
+      <!-- Sheets container -->
+      <div id="sheetsContainer" class="space-y-5"></div>
 
-        <!-- Search & filters -->
-        <div class="flex flex-wrap items-center gap-3 mb-4">
-          <div class="relative flex-1 min-w-[200px]">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-2)]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="searchInput" class="field pl-9 text-sm" placeholder="Search across all columns…" />
-          </div>
-          <div class="text-xs text-[color:var(--text-2)]">
-            <span id="rowCountLabel">— rows</span> · <span id="colCountLabel">— cols</span>
-          </div>
-        </div>
-
-        <!-- Table -->
-        <div class="scroll-x scroll-y" style="max-height: 60vh; overflow:auto;">
-          <table class="data-table" id="dataTable">
-            <thead><tr></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-        <div id="emptyState" class="hidden text-center py-10 text-[color:var(--text-2)] text-sm">
-          No rows match your search.
-        </div>
-      </div>
+      <p class="text-center text-[10px] text-[color:var(--text-2)] mt-6">
+        Shortcuts: <kbd>⌘/Ctrl+K</kbd> search · <kbd>⌘/Ctrl+J</kbd> AI · <kbd>Esc</kbd> clear search · <kbd>[</kbd> / <kbd>]</kbd> prev/next sheet
+      </p>
     </section>
 
     <footer class="text-center text-xs text-[color:var(--text-2)] mt-10 pb-6">
-      SheetFlow · 100% client-side — your data never leaves your browser
+      SheetFlow · 100% client-side — your data never leaves your browser · AI runs locally via WebLLM
     </footer>
   </main>
 
-  <div id="toast" class="toast"></div>
+  <!-- AI Drawer -->
+  <div id="drawerBackdrop" class="drawer-backdrop"></div>
+  <aside id="aiDrawer" class="drawer" aria-label="AI Assistant">
+    <div class="flex items-center justify-between p-4 border-b border-white/8">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background: linear-gradient(120deg, var(--accent-a), var(--accent-b));">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2"><path d="M12 2a3 3 0 0 1 3 3v1h1a3 3 0 0 1 3 3v1h1a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3h-3a3 3 0 0 1-3-3v-1H9a3 3 0 0 1-3-3v-1H5a3 3 0 0 1-3-3v-3a3 3 0 0 1 3-3h1V9a3 3 0 0 1 3-3h1V5a3 3 0 0 1 3-3z"/></svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-[color:var(--text-0)]">AI Data Assistant</h3>
+          <p class="text-[10px] text-[color:var(--text-2)]" id="aiStatusLine">Local query engine · ready</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="aiEngineBtn" class="btn-ghost text-[11px] py-1.5 px-2.5" title="Switch AI engine">Local</button>
+        <button id="closeDrawerBtn" class="btn-ghost text-sm py-1.5 px-2.5" aria-label="Close">✕</button>
+      </div>
+    </div>
+
+    <div class="px-4 py-2 border-b border-white/8 flex items-center gap-2 text-[11px] text-[color:var(--text-2)]">
+      <span>Context:</span>
+      <select id="aiSheetSelect" class="field text-[11px] py-1 px-2" style="width:auto; flex:1;"></select>
+    </div>
+
+    <div id="chatMessages" class="flex-1 overflow-y-auto p-4 flex flex-col gap-2.5 scroll-y" style="min-height: 280px;"></div>
+
+    <div class="px-4 py-2 border-t border-white/8">
+      <div id="suggestionChips" class="flex flex-wrap gap-1.5 mb-2"></div>
+      <div class="flex items-end gap-2">
+        <textarea id="chatInput" rows="1" class="field text-sm resize-none" style="max-height:120px;" placeholder="Ask about your data… (e.g. 'sum of Amount by Region')" aria-label="Ask AI"></textarea>
+        <button id="chatSendBtn" class="btn-primary text-sm py-2.5 px-3.5" aria-label="Send">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <div class="flex items-center justify-between mt-2 text-[10px] text-[color:var(--text-2)]">
+        <button id="clearChatBtn" class="hover:text-[color:var(--text-0)] transition">Clear chat</button>
+        <span id="aiHintLine">AI only sees the data you uploaded · runs 100% in your browser</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Export dropdown -->
+  <div id="exportDropdown" class="hidden absolute glass p-2 flex flex-col gap-1" style="z-index: 100; min-width: 180px;">
+    <button data-export="csv" class="btn-ghost text-xs text-left py-1.5 px-2.5">CSV (current sheet)</button>
+    <button data-export="csv-all" class="btn-ghost text-xs text-left py-1.5 px-2.5">CSV (all visible sheets, zip)</button>
+    <button data-export="json" class="btn-ghost text-xs text-left py-1.5 px-2.5">JSON</button>
+    <button data-export="md" class="btn-ghost text-xs text-left py-1.5 px-2.5">Markdown</button>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
 
 <script>
 /* ===========================================================
-   SheetFlow — single-file sheets dashboard
-   - Parses xlsx/xls/csv/tsv/ods via SheetJS
-   - Fetches Google Sheets via gviz JSON endpoint
-   - Auto-detects column types, generates charts, renders tables
+   SheetFlow v2 — single-file sheets dashboard with AI assistant
    =========================================================== */
 
 const state = {
-  workbook: null,      // { sheetName: { headers, rows, types } }
+  workbook: null,
   sheetNames: [],
   activeSheet: null,
+  visibleSheets: new Set(),
+  hiddenColumns: {}, // { sheetName: Set(headers) }
+  columnFilters: {}, // { sheetName: { header: { type, values, min, max } } }
   searchTerm: "",
   sortCol: null,
   sortDir: "asc",
+  page: 0,
+  pageSize: 50,
+  viewMode: "single",
+  showCharts: true,
+  showHeatmap: true,
+  density: "normal",
+  theme: "midnight",
   barChart: null,
   pieChart: null,
   fileName: "workbook",
+  charts: {}, // per-sheet chart instances
+  // AI
+  aiEngine: "local", // 'local' | 'llm'
+  aiModel: null,
+  aiEngineLoading: false,
+  aiContextSheet: null,
+  chatHistory: [],
+  webllmSupported: typeof navigator !== 'undefined' && navigator.gpu !== undefined,
 };
 
 const $ = (id) => document.getElementById(id);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+/* ---------- Toast queue ---------- */
 function showToast(msg, type = "info", ms = 3000) {
-  const t = $("toast");
+  const c = $("toastContainer");
+  const t = document.createElement("div");
+  t.className = "toast " + (type === "error" ? "error" : type === "success" ? "success" : "");
   t.textContent = msg;
-  t.className = "toast show " + (type === "error" ? "error" : type === "success" ? "success" : "");
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => { t.className = "toast"; }, ms);
+  c.appendChild(t);
+  requestAnimationFrame(() => t.classList.add("show"));
+  setTimeout(() => {
+    t.classList.remove("show");
+    setTimeout(() => t.remove(), 300);
+  }, ms);
 }
 
 /* ---------- Type detection ---------- */
 function detectType(value) {
   if (value === null || value === undefined || value === "") return "null";
   if (typeof value === "boolean") return "bool";
-  if (typeof value === "number" && isFinite(value)) return "num";
   if (value instanceof Date) return "date";
+  if (typeof value === "number" && isFinite(value)) return "num";
   if (typeof value === "string") {
     const s = value.trim();
-    // ISO date / datetime
+    if (s === "") return "null";
     if (/^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?$/.test(s)) return "date";
-    // Common date formats like 1/2/2020 or 01-02-2020
     if (/^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(s)) return "date";
-    // Currency / percent
-    if (/^[$€£¥₹]?\s*-?\d[\d,]*\.?\d*\s%?$/.test(s)) return "num";
-    // Boolean-ish
+    // number with currency, commas, percent, or parens-negatives
+    if (/^[$€£¥₹]?\s*-?\(?\d[\d,]*\.?\d*\)?\s*%?$/.test(s) && !/^\d{1,3}(\.\d+)+(-\d+)+$/.test(s)) {
+      // exclude things like "1.2.3" version numbers — handled by regex already but double-check
+      const cleaned = s.replace(/[$€£¥₹,\s%()]/g, "");
+      if (cleaned !== "" && isFinite(Number(cleaned))) return "num";
+    }
     if (/^(true|false|yes|no|y|n)$/i.test(s)) return "bool";
     return "str";
   }
@@ -505,16 +604,15 @@ function detectType(value) {
 function inferColumnTypes(headers, rows) {
   const types = {};
   headers.forEach((h, i) => {
-    let numCount = 0, dateCount = 0, boolCount = 0, strCount = 0, nullCount = 0;
-    const sampleSize = Math.min(rows.length, 50);
+    let numCount = 0, dateCount = 0, boolCount = 0, strCount = 0;
+    const sampleSize = Math.min(rows.length, 80);
     for (let r = 0; r < sampleSize; r++) {
       const v = rows[r][i];
       const t = detectType(v);
       if (t === "num") numCount++;
       else if (t === "date") dateCount++;
       else if (t === "bool") boolCount++;
-      else if (t === "null") nullCount++;
-      else strCount++;
+      else if (t !== "null") strCount++;
     }
     const nonNull = numCount + dateCount + boolCount + strCount;
     if (nonNull === 0) types[h] = "str";
@@ -526,16 +624,48 @@ function inferColumnTypes(headers, rows) {
   return types;
 }
 
-/* ---------- Build workbook from raw sheet array ---------- */
+function coerceByType(value, type) {
+  if (value === null || value === undefined || value === "") return null;
+  if (type === "num") {
+    if (typeof value === "number") return value;
+    const cleaned = String(value).replace(/[$€£¥₹,\s%]/g, "").replace(/\((.+)\)/, "-$1");
+    const n = Number(cleaned);
+    return isFinite(n) ? n : null;
+  }
+  if (type === "date") {
+    if (value instanceof Date) return value;
+    const d = new Date(value);
+    return isNaN(d) ? null : d;
+  }
+  if (type === "bool") {
+    if (typeof value === "boolean") return value;
+    const s = String(value).toLowerCase();
+    if (["true", "yes", "y", "1"].includes(s)) return true;
+    if (["false", "no", "n", "0"].includes(s)) return false;
+    return null;
+  }
+  return String(value);
+}
+
+/* ---------- Build workbook ---------- */
 function buildWorkbookFromRaw(rawSheets) {
   const wb = {};
   for (const [name, aoa] of Object.entries(rawSheets)) {
     if (!aoa || aoa.length === 0) continue;
-    // find header row: first non-empty row
     let headerIdx = 0;
     while (headerIdx < aoa.length && (aoa[headerIdx] === undefined || aoa[headerIdx].every(c => c === null || c === undefined || c === ""))) headerIdx++;
-    const headers = (aoa[headerIdx] || []).map((h, i) => h === null || h === undefined || h === "" ? `Column ${i+1}` : String(h));
-    const rows = aoa.slice(headerIdx + 1).map(r => headers.map((_, i) => r[i] === undefined ? null : r[i]));
+    if (headerIdx >= aoa.length) continue;
+    let rawHeaders = aoa[headerIdx] || [];
+    // de-duplicate headers
+    const seen = {};
+    const headers = rawHeaders.map((h, i) => {
+      let name = (h === null || h === undefined || h === "") ? `Column ${i+1}` : String(h);
+      if (seen[name] !== undefined) { seen[name]++; name = `${name} (${seen[name]})`; }
+      else seen[name] = 0;
+      return name;
+    });
+    const rows = aoa.slice(headerIdx + 1).map(r => headers.map((_, i) => r[i] === undefined ? null : r[i]))
+      .filter(r => r.some(c => c !== null && c !== undefined && c !== ""));
     const types = inferColumnTypes(headers, rows);
     wb[name] = { headers, rows, types };
   }
@@ -570,8 +700,6 @@ function handleFile(file) {
 
 /* ---------- Google Sheets URL fetch ---------- */
 function parseSheetUrl(url) {
-  // Accepts docs.google.com/spreadsheets/d/{ID}/edit#gid={GID}
-  // or /d/{ID}/gviz/tq... etc.
   const idMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   if (!idMatch) return null;
   const id = idMatch[1];
@@ -584,14 +712,11 @@ function parseSheetUrl(url) {
 async function loadFromGoogleSheets(url) {
   const parsed = parseSheetUrl(url);
   if (!parsed) {
-    showToast("Could not read the Google Sheets URL. Make sure it's a docs.google.com/spreadsheets link.", "error");
+    showToast("Could not read the URL. Make sure it's a docs.google.com/spreadsheets link.", "error");
     return;
   }
   showLoading();
   state.fileName = "google-sheet";
-
-  // First, fetch the workbook sheet list + all sheets via the export=xlsx endpoint
-  // This often works without CORS for publicly-shared sheets.
   const xlsxUrl = `https://docs.google.com/spreadsheets/d/${parsed.id}/export?format=xlsx`;
   try {
     const res = await fetch(xlsxUrl);
@@ -607,7 +732,6 @@ async function loadFromGoogleSheets(url) {
     ingestSheets(rawSheets);
   } catch (err) {
     console.warn("xlsx export failed, falling back to gviz:", err);
-    // Fallback: gviz JSON endpoint (returns one sheet at a time, often CORS-friendly)
     try {
       const gvizUrl = `https://docs.google.com/spreadsheets/d/${parsed.id}/gviz/tq?tqx=out:json&gid=${parsed.gid}`;
       const r2 = await fetch(gvizUrl);
@@ -620,7 +744,7 @@ async function loadFromGoogleSheets(url) {
     } catch (err2) {
       console.error(err2);
       hideLoading();
-      showToast("Couldn't fetch the sheet. Make sure it's shared as 'Anyone with the link → Viewer', or upload the file instead.", "error", 5000);
+      showToast("Couldn't fetch the sheet. Make sure it's shared as 'Anyone with link → Viewer', or upload the file instead.", "error", 5500);
     }
   }
 }
@@ -633,16 +757,12 @@ function gvizToAoa(json) {
   rows.forEach(r => {
     const row = cols.map((_, i) => {
       const cell = r.c && r.c[i];
-      if (!cell) return null;
-      // Try to preserve number/date
-      if (cell.v !== undefined && cell.v !== null) {
-        if (cell.type === "datetime" || cell.type === "date") {
-          const d = new Date(cell.v);
-          return isNaN(d) ? cell.v : d;
-        }
-        return cell.v;
+      if (!cell || cell.v === undefined || cell.v === null) return null;
+      if (cell.type === "datetime" || cell.type === "date") {
+        const d = new Date(cell.v);
+        return isNaN(d) ? cell.v : d;
       }
-      return null;
+      return cell.v;
     });
     aoa.push(row);
   });
@@ -659,17 +779,32 @@ function ingestSheets(rawSheets) {
     return;
   }
   state.activeSheet = state.sheetNames[0];
+  state.visibleSheets = new Set(state.sheetNames);
+  state.hiddenColumns = {};
+  state.columnFilters = {};
+  state.searchTerm = "";
+  state.sortCol = null;
+  state.page = 0;
+  state.aiContextSheet = state.activeSheet;
+
   $("inputSection").classList.add("hidden");
   $("loadingSection").classList.add("hidden");
   $("dashboardSection").classList.remove("hidden");
-  $("exportCsvBtn").classList.remove("hidden");
+  $("aiChatBtn").classList.remove("hidden");
+  $("exportMenuBtn").classList.remove("hidden");
   $("resetBtn").classList.remove("hidden");
 
   renderStats();
-  renderTabs();
-  renderSheet();
+  renderSheetVisibility();
+  renderAISheetSelect();
+  renderAll();
   hideLoading();
-  showToast(`Loaded ${state.sheetNames.length} sheet${state.sheetNames.length>1?"s":""} · ${totalRowCount().toLocaleString()} rows`, "success");
+  showToast(`Loaded ${state.sheetNames.length} sheet${state.sheetNames.length>1?"s":""} · ${totalRowCount().toLocaleString()} rows total`, "success");
+
+  // Greet AI user with overview (only first time)
+  if (state.chatHistory.length === 0) {
+    setTimeout(() => aiWelcomeMessage(), 400);
+  }
 }
 
 function totalRowCount() {
@@ -683,10 +818,11 @@ function renderStats() {
   const totalRows = totalRowCount();
   const totalCols = totalColCount();
   const activeRows = state.workbook[state.activeSheet].rows.length;
+  const visibleSheetCount = state.visibleSheets.size;
   const stats = [
-    { label: "Sheets", value: state.sheetNames.length, icon: "sheets", color: "#c4b5fd" },
-    { label: "Total Rows", value: totalRows.toLocaleString(), icon: "rows", color: "#67e8f9" },
-    { label: "Total Columns", value: totalCols.toLocaleString(), icon: "cols", color: "#f0abfc" },
+    { label: "Sheets Visible", value: `${visibleSheetCount} / ${state.sheetNames.length}`, icon: "sheets", color: "var(--accent-a)" },
+    { label: "Total Rows", value: totalRows.toLocaleString(), icon: "rows", color: "var(--accent-c)" },
+    { label: "Total Columns", value: totalCols.toLocaleString(), icon: "cols", color: "var(--accent-b)" },
     { label: "Active Sheet Rows", value: activeRows.toLocaleString(), icon: "active", color: "#fcd34d" },
   ];
   $("statsGrid").innerHTML = stats.map(s => `
@@ -696,9 +832,7 @@ function renderStats() {
           <p class="text-[10px] uppercase tracking-wider text-[color:var(--text-2)] font-semibold">${s.label}</p>
           <p class="text-2xl font-bold mt-1" style="color:${s.color}">${s.value}</p>
         </div>
-        <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:${s.color}22;">
-          ${iconSvg(s.icon, s.color)}
-        </div>
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:${s.color}22;">${iconSvg(s.icon, s.color)}</div>
       </div>
     </div>
   `).join("");
@@ -715,49 +849,105 @@ function iconSvg(name, color) {
   }
 }
 
-function renderTabs() {
-  $("tabsContainer").innerHTML = state.sheetNames.map(name => {
-    const count = state.workbook[name].rows.length;
-    return `<button class="tab-btn ${name === state.activeSheet ? 'active' : ''}" data-sheet="${escapeHtml(name)}">
-      ${escapeHtml(name)} <span style="opacity:0.5; margin-left:4px; font-size:11px;">${count}</span>
+function renderSheetVisibility() {
+  $("sheetVisibility").innerHTML = state.sheetNames.map(name => {
+    const checked = state.visibleSheets.has(name);
+    return `<button class="checkbox-pill ${checked ? 'checked' : ''}" data-sheet-vis="${escapeAttr(name)}" title="Toggle visibility">
+      ${checked ? '✓' : ''} ${escapeHtml(name)}
     </button>`;
   }).join("");
-  document.querySelectorAll(".tab-btn").forEach(btn => {
+  $$("[data-sheet-vis]").forEach(btn => {
     btn.addEventListener("click", () => {
-      state.activeSheet = btn.dataset.sheet;
-      state.searchTerm = "";
-      $("searchInput").value = "";
-      state.sortCol = null;
-      renderTabs();
-      renderSheet();
+      const name = btn.dataset.sheetVis;
+      if (state.visibleSheets.has(name)) {
+        if (state.visibleSheets.size === 1) {
+          showToast("At least one sheet must be visible.", "error");
+          return;
+        }
+        state.visibleSheets.delete(name);
+        if (state.activeSheet === name) {
+          state.activeSheet = state.sheetNames.find(n => state.visibleSheets.has(n));
+        }
+      } else {
+        state.visibleSheets.add(name);
+      }
+      renderSheetVisibility();
+      renderAll();
     });
   });
 }
 
-/* ---------- Table rendering ---------- */
-function getProcessedRows() {
-  const sheet = state.workbook[state.activeSheet];
+function renderAISheetSelect() {
+  const sel = $("aiSheetSelect");
+  sel.innerHTML = state.sheetNames.map(n => `<option value="${escapeAttr(n)}" ${n === state.aiContextSheet ? 'selected' : ''}>${escapeHtml(n)}</option>`).join("");
+}
+
+/* ---------- Sheet rendering (refactored) ---------- */
+function getProcessedRows(sheetName) {
+  const sheet = state.workbook[sheetName];
   let rows = sheet.rows;
-  // search
-  if (state.searchTerm) {
-    const q = state.searchTerm.toLowerCase();
-    rows = rows.filter(r => r.some(c => c !== null && String(c).toLowerCase().includes(q)));
+  const hidden = state.hiddenColumns[sheetName] || new Set();
+  const filters = state.columnFilters[sheetName] || {};
+
+  // column filters
+  if (Object.keys(filters).length > 0) {
+    rows = rows.filter(r => {
+      return sheet.headers.every((h, i) => {
+        if (!filters[h]) return true;
+        const f = filters[h];
+        const v = r[i];
+        if (f.type === "str") {
+          if (!f.values || f.values.size === 0) return true;
+          return f.values.has(String(v ?? ""));
+        }
+        if (f.type === "num") {
+          const n = coerceByType(v, "num");
+          if (n === null) return f.includeNull;
+          if (f.min !== null && n < f.min) return false;
+          if (f.max !== null && n > f.max) return false;
+          return true;
+        }
+        if (f.type === "date") {
+          const d = coerceByType(v, "date");
+          if (!d) return f.includeNull;
+          if (f.min && d < f.min) return false;
+          if (f.max && d > f.max) return false;
+          return true;
+        }
+        return true;
+      });
+    });
   }
-  // sort
-  if (state.sortCol !== null) {
+
+  // search (only when this is the active sheet)
+  if (sheetName === state.activeSheet && state.searchTerm) {
+    const q = state.searchTerm.toLowerCase();
+    rows = rows.filter(r => r.some((c, i) => {
+      if (hidden.has(sheet.headers[i])) return false;
+      return c !== null && String(c).toLowerCase().includes(q);
+    }));
+  }
+
+  // sort (only when this is the active sheet)
+  if (sheetName === state.activeSheet && state.sortCol) {
     const idx = sheet.headers.indexOf(state.sortCol);
     if (idx >= 0) {
       const dir = state.sortDir === "asc" ? 1 : -1;
       const type = sheet.types[state.sortCol];
       rows = [...rows].sort((a, b) => {
         const av = a[idx], bv = b[idx];
-        if (av === null || av === undefined || av === "") return 1;
-        if (bv === null || bv === undefined || bv === "") return -1;
-        if (type === "num") return (Number(av) - Number(bv)) * dir;
+        const aNull = av === null || av === undefined || av === "";
+        const bNull = bv === null || bv === undefined || bv === "";
+        if (aNull && bNull) return 0;
+        if (aNull) return 1;
+        if (bNull) return -1;
+        if (type === "num") {
+          const an = coerceByType(av, "num"), bn = coerceByType(bv, "num");
+          return ((an ?? 0) - (bn ?? 0)) * dir;
+        }
         if (type === "date") {
-          const ad = av instanceof Date ? av.getTime() : new Date(av).getTime();
-          const bd = bv instanceof Date ? bv.getTime() : new Date(bv).getTime();
-          return (ad - bd) * dir;
+          const ad = coerceByType(av, "date"), bd = coerceByType(bv, "date");
+          return ((ad?.getTime() ?? 0) - (bd?.getTime() ?? 0)) * dir;
         }
         return String(av).localeCompare(String(bv)) * dir;
       });
@@ -767,118 +957,567 @@ function getProcessedRows() {
 }
 
 function formatCell(value, type) {
-  if (value === null || value === undefined || value === "") return { html: '<span class="null-cell">—</span>', cls: "null-cell" };
+  if (value === null || value === undefined || value === "") return { html: '<span class="null-cell">—</span>', cls: "null-cell", raw: null };
   if (type === "num") {
-    const n = typeof value === "number" ? value : Number(String(value).replace(/[$€£¥₹,\s%]/g, ""));
-    return { html: isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : escapeHtml(String(value)), cls: "num" };
+    const n = coerceByType(value, "num");
+    return { html: n === null ? escapeHtml(String(value)) : n.toLocaleString(undefined, { maximumFractionDigits: 2 }), cls: "num", raw: n };
   }
   if (type === "date") {
-    const d = value instanceof Date ? value : new Date(value);
-    if (isNaN(d)) return { html: escapeHtml(String(value)), cls: "date" };
-    return { html: escapeHtml(d.toLocaleDateString()), cls: "date" };
+    const d = coerceByType(value, "date");
+    if (!d) return { html: escapeHtml(String(value)), cls: "date", raw: null };
+    return { html: escapeHtml(d.toLocaleDateString()), cls: "date", raw: d.getTime() };
   }
   if (type === "bool") {
-    return { html: escapeHtml(String(value)), cls: "bool" };
+    const b = coerceByType(value, "bool");
+    return { html: escapeHtml(String(b === null ? value : b)), cls: "bool", raw: b };
   }
-  return { html: escapeHtml(String(value)), cls: "" };
+  return { html: escapeHtml(String(value)), cls: "", raw: String(value) };
 }
 
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
 }
+function escapeAttr(str) { return escapeHtml(str); }
 
-function renderSheet() {
-  const sheet = state.workbook[state.activeSheet];
-  const rows = getProcessedRows();
+function highlight(text, term) {
+  if (!term) return text;
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp("(" + escaped + ")", "gi"), "<mark>$1</mark>");
+}
 
-  // Header
-  const thead = document.querySelector("#dataTable thead tr");
-  thead.innerHTML = sheet.headers.map(h => {
-    const type = sheet.types[h];
-    const sortCls = state.sortCol === h ? (state.sortDir === "asc" ? "sorted-asc" : "sorted-desc") : "";
-    const ind = state.sortCol === h ? (state.sortDir === "asc" ? "▲" : "▼") : "⇅";
-    return `<th data-col="${escapeHtml(h)}" class="${sortCls}">
-      <div class="flex items-center justify-between gap-2">
-        <span>${escapeHtml(h)}</span>
-        <span class="flex items-center gap-1.5">
-          <span class="pill pill-${type}">${type}</span>
-          <span class="sort-indicator">${ind}</span>
-        </span>
-      </div>
-    </th>`;
-  }).join("");
+function renderAll() {
+  renderStats();
+  renderChartsRow();
+  renderSheetsContainer();
+  if (state.showCharts) renderCharts();
+}
 
-  // Body
-  const tbody = document.querySelector("#dataTable tbody");
-  if (rows.length === 0) {
-    tbody.innerHTML = "";
-    $("emptyState").classList.remove("hidden");
-  } else {
-    $("emptyState").classList.add("hidden");
-    const maxRows = 1000; // cap DOM for performance
-    const sliced = rows.slice(0, maxRows);
-    tbody.innerHTML = sliced.map(r =>
-      `<tr>${sheet.headers.map((h, i) => {
-        const cell = formatCell(r[i], sheet.types[h]);
-        return `<td class="${cell.cls}">${cell.html}</td>`;
-      }).join("")}</tr>`
-    ).join("");
-    if (rows.length > maxRows) {
-      tbody.innerHTML += `<tr><td colspan="${sheet.headers.length}" class="text-center text-[color:var(--text-2)] text-xs py-3">Showing first ${maxRows} of ${rows.length.toLocaleString()} rows — refine your search to see more</td></tr>`;
-    }
+function renderChartsRow() {
+  $("chartsRow").classList.toggle("hidden", !state.showCharts);
+}
+
+function renderSheetsContainer() {
+  const container = $("sheetsContainer");
+  const sheetsToShow = state.viewMode === "multi"
+    ? state.sheetNames.filter(n => state.visibleSheets.has(n))
+    : [state.activeSheet].filter(n => n && state.visibleSheets.has(n));
+
+  // If active sheet not visible, switch
+  if (sheetsToShow.length === 0 && state.sheetNames.length > 0) {
+    state.activeSheet = state.sheetNames[0];
+    return renderSheetsContainer();
   }
 
-  // Row/col count
-  $("rowCountLabel").textContent = `${rows.length.toLocaleString()} rows`;
-  $("colCountLabel").textContent = `${sheet.headers.length} cols`;
+  container.innerHTML = "";
+  sheetsToShow.forEach((name, idx) => {
+    const card = renderSheetCard(name, idx);
+    container.appendChild(card);
+  });
+}
 
-  // Sort handlers
-  document.querySelectorAll("#dataTable thead th").forEach(th => {
-    th.addEventListener("click", () => {
-      const col = th.dataset.col;
+function renderSheetCard(sheetName, idx) {
+  const sheet = state.workbook[sheetName];
+  const isActive = sheetName === state.activeSheet;
+  const hidden = state.hiddenColumns[sheetName] || new Set();
+  const filters = state.columnFilters[sheetName] || {};
+  const visibleHeaders = sheet.headers.map((h, i) => ({ h, i })).filter(x => !hidden.has(x.h));
+
+  const card = document.createElement("div");
+  card.className = "glass p-5 fade-in";
+  card.dataset.sheetName = sheetName;
+
+  // Header
+  const headerDiv = document.createElement("div");
+  headerDiv.className = "flex flex-wrap items-center justify-between gap-3 mb-3";
+  headerDiv.innerHTML = `
+    <div class="flex items-center gap-3 min-w-0">
+      ${state.viewMode === "multi" ? `<button class="tab-btn ${isActive ? 'active' : ''}" data-activate="${escapeAttr(sheetName)}">${escapeHtml(sheetName)}</button>` : `<h2 class="text-base font-semibold text-[color:var(--text-0)] truncate">${escapeHtml(sheetName)}</h2>`}
+      <span class="text-xs text-[color:var(--text-2)]">${sheet.rows.length.toLocaleString()} rows · ${visibleHeaders.length} cols</span>
+    </div>
+    <div class="flex items-center gap-1.5 flex-wrap">
+      ${state.viewMode === "single" ? `
+      <div class="flex flex-wrap gap-1.5" id="tabsContainer">
+        ${state.sheetNames.filter(n => state.visibleSheets.has(n)).map(n =>
+          `<button class="tab-btn ${n === sheetName ? 'active' : ''}" data-activate="${escapeAttr(n)}" title="Switch to ${escapeAttr(n)}">${escapeHtml(n)}</button>`
+        ).join("")}
+      </div>` : ''}
+      <button class="btn-ghost text-xs py-1.5 px-2.5" data-cols-btn="${escapeAttr(sheetName)}" title="Manage columns">Columns</button>
+      <button class="btn-ghost text-xs py-1.5 px-2.5" data-ai-btn="${escapeAttr(sheetName)}" title="Ask AI about this sheet">Ask AI</button>
+    </div>
+  `;
+  card.appendChild(headerDiv);
+
+  // Search + count (only show on active sheet)
+  if (isActive) {
+    const searchDiv = document.createElement("div");
+    searchDiv.className = "flex flex-wrap items-center gap-3 mb-3";
+    searchDiv.innerHTML = `
+      <div class="relative flex-1 min-w-[200px]">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-2)]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput" class="field pl-9 text-sm" placeholder="Search this sheet… (⌘K)" value="${escapeAttr(state.searchTerm)}" aria-label="Search" />
+      </div>
+      <div class="text-xs text-[color:var(--text-2)]" id="rowCountLabel">— rows</div>
+    `;
+    card.appendChild(searchDiv);
+  }
+
+  // Table
+  const rows = getProcessedRows(sheetName);
+  const tableWrap = document.createElement("div");
+  tableWrap.className = "scroll-x scroll-y relative";
+  tableWrap.style.maxHeight = "60vh";
+  tableWrap.style.overflow = "auto";
+
+  const table = document.createElement("table");
+  table.className = "data-table";
+
+  // thead
+  const thead = document.createElement("thead");
+  const tr = document.createElement("tr");
+  visibleHeaders.forEach(({ h, i }) => {
+    const type = sheet.types[h];
+    const isSorted = isActive && state.sortCol === h;
+    const sortCls = isSorted ? (state.sortDir === "asc" ? "sorted-asc" : "sorted-desc") : "";
+    const ind = isSorted ? (state.sortDir === "asc" ? "▲" : "▼") : "";
+    const hasFilter = filters[h] && (
+      (filters[h].type === "str" && filters[h].values && filters[h].values.size > 0) ||
+      (filters[h].type === "num" && (filters[h].min !== null || filters[h].max !== null)) ||
+      (filters[h].type === "date" && (filters[h].min || filters[h].max))
+    );
+    const th = document.createElement("th");
+    th.className = sortCls;
+    th.dataset.colIdx = i;
+    th.dataset.sheet = sheetName;
+    th.innerHTML = `
+      <div class="flex items-center justify-between gap-2">
+        <span class="truncate" style="max-width:200px;">${escapeHtml(h)}</span>
+        <span class="flex items-center gap-1.5 flex-shrink-0">
+          <span class="pill pill-${type}">${type}</span>
+          ${hasFilter ? `<span style="color:#f0abfc;font-size:11px;" title="Filter active">●</span>` : ''}
+          <span class="sort-ind">${ind}</span>
+        </span>
+      </div>
+    `;
+    tr.appendChild(th);
+  });
+  thead.appendChild(tr);
+  table.appendChild(thead);
+
+  // tbody
+  const tbody = document.createElement("tbody");
+  const isPaginated = isActive;
+  let displayRows = rows;
+  if (isPaginated) {
+    const start = state.page * state.pageSize;
+    displayRows = rows.slice(start, start + state.pageSize);
+  } else {
+    displayRows = rows.slice(0, 50); // multi-sheet view caps at 50
+  }
+
+  if (displayRows.length === 0) {
+    const emptyTr = document.createElement("tr");
+    const emptyTd = document.createElement("td");
+    emptyTd.colSpan = visibleHeaders.length;
+    emptyTd.className = "text-center text-[color:var(--text-2)] text-sm py-10";
+    emptyTd.textContent = state.searchTerm || Object.keys(filters).length > 0 ? "No rows match your filters." : "This sheet has no data rows.";
+    emptyTr.appendChild(emptyTd);
+    tbody.appendChild(emptyTr);
+  } else {
+    // compute heatmap range per numeric column (for active sheet only, when enabled)
+    const heatmapRanges = {};
+    if (state.showHeatmap) {
+      visibleHeaders.forEach(({ h, i }) => {
+        if (sheet.types[h] === "num") {
+          let min = Infinity, max = -Infinity;
+          displayRows.forEach(r => {
+            const n = coerceByType(r[i], "num");
+            if (n !== null) { if (n < min) min = n; if (n > max) max = n; }
+          });
+          if (min !== Infinity) heatmapRanges[i] = { min, max };
+        }
+      });
+    }
+
+    const frag = document.createDocumentFragment();
+    displayRows.forEach(r => {
+      const trEl = document.createElement("tr");
+      visibleHeaders.forEach(({ h, i }) => {
+        const type = sheet.types[h];
+        const cell = formatCell(r[i], type);
+        const tdEl = document.createElement("td");
+        tdEl.className = cell.cls;
+        if (state.searchTerm && isActive && cell.raw !== null) {
+          tdEl.innerHTML = highlight(cell.html, state.searchTerm);
+        } else {
+          tdEl.innerHTML = cell.html;
+        }
+        // heatmap background
+        if (state.showHeatmap && heatmapRanges[i] && cell.cls === "num") {
+          const range = heatmapRanges[i].max - heatmapRanges[i].min;
+          const ratio = range === 0 ? 0.5 : (cell.raw - heatmapRanges[i].min) / range;
+          // green->yellow->red gradient based on ratio
+          let color;
+          if (ratio < 0.5) {
+            const t = ratio * 2;
+            color = `rgba(34, 197, 94, ${0.15 + t * 0.15})`;
+          } else {
+            const t = (ratio - 0.5) * 2;
+            color = `rgba(239, 68, 68, ${0.15 + t * 0.2})`;
+          }
+          tdEl.classList.add("heatmap-cell");
+          const bar = document.createElement("div");
+          bar.className = "heatmap-bar";
+          bar.style.background = color;
+          tdEl.style.position = "relative";
+          tdEl.appendChild(bar);
+        }
+        trEl.appendChild(tdEl);
+      });
+      frag.appendChild(trEl);
+    });
+    tbody.appendChild(frag);
+
+    if (rows.length > displayRows.length && !isPaginated) {
+      const moreTr = document.createElement("tr");
+      const moreTd = document.createElement("td");
+      moreTd.colSpan = visibleHeaders.length;
+      moreTd.className = "text-center text-[color:var(--text-2)] text-xs py-3";
+      moreTd.textContent = `Showing first 50 of ${rows.length.toLocaleString()} rows. Switch to single-sheet view for full pagination.`;
+      moreTr.appendChild(moreTd);
+      tbody.appendChild(moreTr);
+    }
+  }
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  card.appendChild(tableWrap);
+
+  // Pagination (active sheet only)
+  if (isActive && rows.length > state.pageSize) {
+    const totalPages = Math.ceil(rows.length / state.pageSize);
+    const cur = Math.min(state.page, totalPages - 1);
+    const pagDiv = document.createElement("div");
+    pagDiv.className = "flex items-center justify-between mt-3 flex-wrap gap-2";
+    const start = cur * state.pageSize + 1;
+    const end = Math.min((cur + 1) * state.pageSize, rows.length);
+    pagDiv.innerHTML = `
+      <div class="text-xs text-[color:var(--text-2)]">Showing ${start.toLocaleString()}–${end.toLocaleString()} of ${rows.length.toLocaleString()}</div>
+      <div class="flex items-center gap-1.5 flex-wrap" id="paginationControls">
+        <button class="pagination-btn" data-page="0" ${cur === 0 ? 'disabled' : ''} title="First">«</button>
+        <button class="pagination-btn" data-page="${cur - 1}" ${cur === 0 ? 'disabled' : ''} title="Prev">‹</button>
+        ${pageRange(cur, totalPages).map(p =>
+          p === '...' ? `<span class="text-xs text-[color:var(--text-2)] px-1">…</span>`
+          : `<button class="pagination-btn ${p === cur ? 'active' : ''}" data-page="${p}">${p + 1}</button>`
+        ).join('')}
+        <button class="pagination-btn" data-page="${cur + 1}" ${cur === totalPages - 1 ? 'disabled' : ''} title="Next">›</button>
+        <button class="pagination-btn" data-page="${totalPages - 1}" ${cur === totalPages - 1 ? 'disabled' : ''} title="Last">»</button>
+      </div>
+    `;
+    card.appendChild(pagDiv);
+  }
+
+  // Update row count label
+  const rcLabel = card.querySelector("#rowCountLabel");
+  if (rcLabel) rcLabel.textContent = `${rows.length.toLocaleString()} rows · ${visibleHeaders.length} cols${(state.searchTerm || Object.keys(filters).length > 0) ? ` (filtered from ${sheet.rows.length.toLocaleString()})` : ''}`;
+
+  // Wire events
+  $$("[data-activate]", card).forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.activeSheet = btn.dataset.activate;
+      state.aiContextSheet = state.activeSheet;
+      state.searchTerm = "";
+      state.sortCol = null;
+      state.page = 0;
+      renderAISheetSelect();
+      renderAll();
+    });
+  });
+
+  $$("th[data-col-idx]", card).forEach(th => {
+    th.addEventListener("click", (e) => {
+      if (e.target.closest(".col-filter-dropdown")) return;
+      const colIdx = parseInt(th.dataset.colIdx);
+      const sheet = state.workbook[th.dataset.sheet];
+      const col = sheet.headers[colIdx];
+      if (!state.visibleSheets.has(th.dataset.sheet)) return;
+      if (th.dataset.sheet !== state.activeSheet) {
+        state.activeSheet = th.dataset.sheet;
+        state.aiContextSheet = state.activeSheet;
+        renderAISheetSelect();
+      }
       if (state.sortCol === col) {
         state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
       } else {
         state.sortCol = col;
         state.sortDir = "asc";
       }
-      renderSheet();
+      state.page = 0;
+      renderAll();
+    });
+    // right-click for filter
+    th.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      const colIdx = parseInt(th.dataset.colIdx);
+      const sheetName = th.dataset.sheet;
+      openColumnFilter(th, sheetName, colIdx);
     });
   });
 
-  // Rebuild chart selectors
-  rebuildChartSelectors();
-  renderCharts();
+  $$("[data-cols-btn]", card).forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openColumnManager(btn, btn.dataset.colsBtn);
+    });
+  });
+  $$("[data-ai-btn]", card).forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.aiContextSheet = btn.dataset.aiBtn;
+      renderAISheetSelect();
+      openDrawer();
+      setTimeout(() => $("chatInput").focus(), 100);
+    });
+  });
+
+  // Pagination handlers
+  $$("[data-page]", card).forEach(btn => {
+    btn.addEventListener("click", () => {
+      const p = parseInt(btn.dataset.page);
+      if (!isNaN(p) && p >= 0) {
+        state.page = p;
+        renderAll();
+        // scroll table into view
+        card.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+
+  return card;
+}
+
+function pageRange(cur, total) {
+  if (total <= 7) return Array.from({length: total}, (_, i) => i);
+  if (cur < 3) return [0, 1, 2, 3, '...', total - 1];
+  if (cur > total - 4) return [0, '...', total - 4, total - 3, total - 2, total - 1];
+  return [0, '...', cur - 1, cur, cur + 1, '...', total - 1];
+}
+
+/* ---------- Column filter dropdown ---------- */
+function openColumnFilter(thAnchor, sheetName, colIdx) {
+  // Close existing
+  $$(".col-filter-dropdown").forEach(d => d.remove());
+  const sheet = state.workbook[sheetName];
+  const header = sheet.headers[colIdx];
+  const type = sheet.types[header];
+  const existing = (state.columnFilters[sheetName] || {})[header] || {};
+
+  const dd = document.createElement("div");
+  dd.className = "col-filter-dropdown";
+
+  if (type === "str") {
+    // unique values
+    const counts = {};
+    sheet.rows.forEach(r => {
+      const v = r[colIdx];
+      const k = (v === null || v === undefined || v === "") ? "(empty)" : String(v);
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const selected = existing.values ? new Set(existing.values) : new Set();
+
+    dd.innerHTML = `
+      <div class="flex items-center gap-2 mb-2">
+        <input type="text" class="field text-xs py-1 px-2 filter-search" placeholder="Search values…" style="flex:1;" />
+        <button class="btn-ghost text-[10px] py-1 px-2 select-all" title="Select all">All</button>
+        <button class="btn-ghost text-[10px] py-1 px-2 select-none" title="Clear">None</button>
+      </div>
+      <div class="options">
+        ${sorted.map(([v, c]) => `<label><input type="checkbox" value="${escapeAttr(v)}" ${selected.has(v) ? 'checked' : ''} /><span class="flex-1 truncate">${escapeHtml(v)}</span><span class="text-[color:var(--text-2)] text-[10px]">${c}</span></label>`).join('')}
+      </div>
+      <div class="flex gap-1.5 mt-2 pt-2 border-t border-white/10">
+        <button class="btn-primary text-xs py-1.5 px-2 flex-1 apply-filter">Apply</button>
+        <button class="btn-ghost text-xs py-1.5 px-2 clear-filter">Clear</button>
+      </div>
+    `;
+  } else if (type === "num") {
+    let min = Infinity, max = -Infinity;
+    sheet.rows.forEach(r => {
+      const n = coerceByType(r[colIdx], "num");
+      if (n !== null) { if (n < min) min = n; if (n > max) max = n; }
+    });
+    if (min === Infinity) { min = 0; max = 0; }
+    dd.innerHTML = `
+      <div class="text-xs font-semibold mb-2 text-[color:var(--text-0)]">Filter ${escapeHtml(header)}</div>
+      <div class="text-[10px] text-[color:var(--text-2)] mb-2">Range: ${min.toLocaleString()} – ${max.toLocaleString()}</div>
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <input type="number" class="field text-xs py-1 px-2 min-input" placeholder="Min" value="${existing.min !== undefined && existing.min !== null ? existing.min : ''}" />
+        <input type="number" class="field text-xs py-1 px-2 max-input" placeholder="Max" value="${existing.max !== undefined && existing.max !== null ? existing.max : ''}" />
+      </div>
+      <label class="flex items-center gap-2 text-xs mb-2"><input type="checkbox" class="include-null" ${existing.includeNull ? 'checked' : ''}/> Include empty cells</label>
+      <div class="flex gap-1.5">
+        <button class="btn-primary text-xs py-1.5 px-2 flex-1 apply-filter">Apply</button>
+        <button class="btn-ghost text-xs py-1.5 px-2 clear-filter">Clear</button>
+      </div>
+    `;
+  } else if (type === "date") {
+    let min = null, max = null;
+    sheet.rows.forEach(r => {
+      const d = coerceByType(r[colIdx], "date");
+      if (d) { if (!min || d < min) min = d; if (!max || d > max) max = d; }
+    });
+    dd.innerHTML = `
+      <div class="text-xs font-semibold mb-2 text-[color:var(--text-0)]">Filter ${escapeHtml(header)}</div>
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <input type="date" class="field text-xs py-1 px-2 min-input" value="${existing.min ? existing.min.toISOString().slice(0,10) : ''}" />
+        <input type="date" class="field text-xs py-1 px-2 max-input" value="${existing.max ? existing.max.toISOString().slice(0,10) : ''}" />
+      </div>
+      <label class="flex items-center gap-2 text-xs mb-2"><input type="checkbox" class="include-null" ${existing.includeNull ? 'checked' : ''}/> Include empty cells</label>
+      <div class="flex gap-1.5">
+        <button class="btn-primary text-xs py-1.5 px-2 flex-1 apply-filter">Apply</button>
+        <button class="btn-ghost text-xs py-1.5 px-2 clear-filter">Clear</button>
+      </div>
+    `;
+  } else {
+    dd.innerHTML = `<div class="text-xs p-3 text-[color:var(--text-2)]">No filter available for ${type} columns.</div>`;
+  }
+
+  thAnchor.style.position = "relative";
+  thAnchor.appendChild(dd);
+
+  const close = () => { dd.remove(); document.removeEventListener("click", onOutside); };
+  const onOutside = (e) => { if (!dd.contains(e.target) && !thAnchor.contains(e.target)) close(); };
+  setTimeout(() => document.addEventListener("click", onOutside), 0);
+
+  const applyBtn = dd.querySelector(".apply-filter");
+  const clearBtn = dd.querySelector(".clear-filter");
+  if (applyBtn) applyBtn.addEventListener("click", () => {
+    if (!state.columnFilters[sheetName]) state.columnFilters[sheetName] = {};
+    if (type === "str") {
+      const checked = Array.from(dd.querySelectorAll("input[type=checkbox]:checked")).map(c => c.value);
+      state.columnFilters[sheetName][header] = { type: "str", values: new Set(checked) };
+    } else if (type === "num") {
+      const minV = dd.querySelector(".min-input").value;
+      const maxV = dd.querySelector(".max-input").value;
+      const incNull = dd.querySelector(".include-null").checked;
+      state.columnFilters[sheetName][header] = { type: "num", min: minV === "" ? null : Number(minV), max: maxV === "" ? null : Number(maxV), includeNull: incNull };
+    } else if (type === "date") {
+      const minV = dd.querySelector(".min-input").value;
+      const maxV = dd.querySelector(".max-input").value;
+      const incNull = dd.querySelector(".include-null").checked;
+      state.columnFilters[sheetName][header] = { type: "date", min: minV ? new Date(minV) : null, max: maxV ? new Date(maxV + "T23:59:59") : null, includeNull: incNull };
+    }
+    state.page = 0;
+    close();
+    renderAll();
+  });
+  if (clearBtn) clearBtn.addEventListener("click", () => {
+    if (state.columnFilters[sheetName]) delete state.columnFilters[sheetName][header];
+    close();
+    renderAll();
+  });
+  // Filter search
+  const fs = dd.querySelector(".filter-search");
+  if (fs) {
+    fs.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase();
+      Array.from(dd.querySelectorAll("label")).forEach(l => {
+        l.style.display = l.textContent.toLowerCase().includes(q) ? "" : "none";
+      });
+    });
+  }
+  const sa = dd.querySelector(".select-all");
+  if (sa) sa.addEventListener("click", () => dd.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = true));
+  const sn = dd.querySelector(".select-none");
+  if (sn) sn.addEventListener("click", () => dd.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = false));
+}
+
+/* ---------- Column manager ---------- */
+function openColumnManager(anchor, sheetName) {
+  $$(".col-filter-dropdown").forEach(d => d.remove());
+  const sheet = state.workbook[sheetName];
+  if (!state.hiddenColumns[sheetName]) state.hiddenColumns[sheetName] = new Set();
+  const hidden = state.hiddenColumns[sheetName];
+
+  const dd = document.createElement("div");
+  dd.className = "col-filter-dropdown";
+  dd.style.minWidth = "260px";
+  dd.style.maxHeight = "360px";
+
+  dd.innerHTML = `
+    <div class="text-xs font-semibold mb-2 text-[color:var(--text-0)]">Columns in ${escapeHtml(sheetName)}</div>
+    <div class="flex items-center gap-2 mb-2">
+      <button class="btn-ghost text-[10px] py-1 px-2 select-all-cols">Show all</button>
+      <button class="btn-ghost text-[10px] py-1 px-2 select-none-cols">Hide all</button>
+    </div>
+    <div class="options" style="max-height: 240px;">
+      ${sheet.headers.map((h, i) => `<label><input type="checkbox" data-col-idx="${i}" ${!hidden.has(h) ? 'checked' : ''}/><span class="flex-1 truncate">${escapeHtml(h)}</span><span class="pill pill-${sheet.types[h]}" style="font-size:8px;">${sheet.types[h]}</span></label>`).join('')}
+    </div>
+  `;
+  anchor.parentElement.appendChild(dd);
+  anchor.style.position = "relative";
+
+  const close = () => { dd.remove(); document.removeEventListener("click", onOutside); };
+  const onOutside = (e) => { if (!dd.contains(e.target) && !anchor.contains(e.target)) close(); };
+  setTimeout(() => document.addEventListener("click", onOutside), 0);
+
+  dd.querySelectorAll("input[type=checkbox]").forEach(c => {
+    c.addEventListener("change", () => {
+      const idx = parseInt(c.dataset.colIdx);
+      const h = sheet.headers[idx];
+      if (c.checked) hidden.delete(h); else hidden.add(h);
+      renderAll();
+    });
+  });
+  dd.querySelector(".select-all-cols").addEventListener("click", () => {
+    hidden.clear();
+    dd.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = true);
+    renderAll();
+  });
+  dd.querySelector(".select-none-cols").addEventListener("click", () => {
+    sheet.headers.forEach(h => hidden.add(h));
+    dd.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = false);
+    renderAll();
+  });
 }
 
 /* ---------- Charts ---------- */
-function rebuildChartSelectors() {
+function renderCharts() {
+  if (!state.showCharts) return;
   const sheet = state.workbook[state.activeSheet];
+  if (!sheet) return;
+
+  // Build selectors only if not yet built or sheet changed
   const xSel = $("chartXSelect");
   const pSel = $("chartPieSelect");
-  xSel.innerHTML = sheet.headers.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join("");
-  pSel.innerHTML = sheet.headers.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join("");
+  const currentX = xSel.value;
+  const currentP = pSel.value;
+  xSel.innerHTML = sheet.headers.map(h => `<option value="${escapeAttr(h)}">${escapeHtml(h)}</option>`).join("");
+  pSel.innerHTML = sheet.headers.map(h => `<option value="${escapeAttr(h)}">${escapeHtml(h)}</option>`).join("");
 
-  // Default: pick first string col for pie, first num col for bar
-  const firstStr = sheet.headers.find(h => sheet.types[h] === "str");
-  const firstNum = sheet.headers.find(h => sheet.types[h] === "num");
-  if (firstStr) pSel.value = firstStr;
-  if (firstNum) xSel.value = firstNum;
-  else if (firstStr) xSel.value = firstStr;
+  // Preserve selection if possible
+  if (sheet.headers.includes(currentX)) xSel.value = currentX;
+  else {
+    const firstStr = sheet.headers.find(h => sheet.types[h] === "str");
+    xSel.value = firstStr || sheet.headers[0] || "";
+  }
+  if (sheet.headers.includes(currentP)) pSel.value = currentP;
+  else {
+    const firstStr = sheet.headers.find(h => sheet.types[h] === "str");
+    pSel.value = firstStr || sheet.headers[0] || "";
+  }
 
   $("chartXLabel").textContent = xSel.value;
   $("chartPieLabel").textContent = pSel.value;
+  drawCharts();
 }
 
-function renderCharts() {
+function drawCharts() {
   const sheet = state.workbook[state.activeSheet];
+  if (!sheet) return;
   const xCol = $("chartXSelect").value;
   const pCol = $("chartPieSelect").value;
+  if (!xCol || !pCol) return;
   $("chartXLabel").textContent = xCol;
   $("chartPieLabel").textContent = pCol;
 
-  // BAR chart: aggregate sum of numeric column grouped by selected dimension (if dimension is non-numeric)
-  // If selected X col is numeric, just show top values
   const xi = sheet.headers.indexOf(xCol);
   const pi = sheet.headers.indexOf(pCol);
 
@@ -890,7 +1529,7 @@ function renderCharts() {
     const key = String(k).length > 24 ? String(k).slice(0, 22) + "…" : String(k);
     barAgg[key] = (barAgg[key] || 0) + 1;
   });
-  const barEntries = Object.entries(barAgg).sort((a,b) => b[1] - a[1]).slice(0, 10);
+  const barEntries = Object.entries(barAgg).sort((a, b) => b[1] - a[1]).slice(0, 10);
   drawBarChart(barEntries.map(e => e[0]), barEntries.map(e => e[1]), `Count by ${xCol}`);
 
   // PIE — top 7 groups by count of pCol
@@ -901,7 +1540,7 @@ function renderCharts() {
     const key = String(k).length > 24 ? String(k).slice(0, 22) + "…" : String(k);
     pieAgg[key] = (pieAgg[key] || 0) + 1;
   });
-  const pieEntries = Object.entries(pieAgg).sort((a,b) => b[1] - a[1]).slice(0, 7);
+  const pieEntries = Object.entries(pieAgg).sort((a, b) => b[1] - a[1]).slice(0, 7);
   drawPieChart(pieEntries.map(e => e[0]), pieEntries.map(e => e[1]), `Distribution of ${pCol}`);
 }
 
@@ -912,27 +1551,18 @@ function drawBarChart(labels, data, title) {
   if (state.barChart) state.barChart.destroy();
   state.barChart = new Chart(ctx, {
     type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        label: title,
-        data,
-        backgroundColor: labels.map((_, i) => palette[i % palette.length] + "cc"),
-        borderColor: labels.map((_, i) => palette[i % palette.length]),
-        borderWidth: 1.5,
-        borderRadius: 6,
-      }],
-    },
+    data: { labels, datasets: [{
+      label: title, data,
+      backgroundColor: labels.map((_, i) => palette[i % palette.length] + "cc"),
+      borderColor: labels.map((_, i) => palette[i % palette.length]),
+      borderWidth: 1.5, borderRadius: 6,
+    }]},
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { backgroundColor: "rgba(13,18,48,0.95)", borderColor: "rgba(255,255,255,0.1)", borderWidth: 1 },
-      },
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: "rgba(13,18,48,.95)", borderColor: "rgba(255,255,255,.1)", borderWidth: 1 } },
       scales: {
-        x: { ticks: { color: "#a5adce", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.04)" } },
-        y: { ticks: { color: "#a5adce", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.06)" }, beginAtZero: true },
+        x: { ticks: { color: "#a5adce", font: { size: 10 } }, grid: { color: "rgba(255,255,255,.04)" } },
+        y: { ticks: { color: "#a5adce", font: { size: 10 } }, grid: { color: "rgba(255,255,255,.06)" }, beginAtZero: true },
       },
     },
   });
@@ -943,23 +1573,16 @@ function drawPieChart(labels, data, title) {
   if (state.pieChart) state.pieChart.destroy();
   state.pieChart = new Chart(ctx, {
     type: "doughnut",
-    data: {
-      labels,
-      datasets: [{
-        label: title,
-        data,
-        backgroundColor: labels.map((_, i) => palette[i % palette.length] + "dd"),
-        borderColor: "rgba(13,18,48,0.8)",
-        borderWidth: 2,
-      }],
-    },
+    data: { labels, datasets: [{
+      label: title, data,
+      backgroundColor: labels.map((_, i) => palette[i % palette.length] + "dd"),
+      borderColor: "rgba(13,18,48,.8)", borderWidth: 2,
+    }]},
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: "60%",
+      responsive: true, maintainAspectRatio: false, cutout: "60%",
       plugins: {
         legend: { position: "right", labels: { color: "#a5adce", font: { size: 11 }, boxWidth: 12 } },
-        tooltip: { backgroundColor: "rgba(13,18,48,0.95)", borderColor: "rgba(255,255,255,0.1)", borderWidth: 1 },
+        tooltip: { backgroundColor: "rgba(13,18,48,.95)", borderColor: "rgba(255,255,255,.1)", borderWidth: 1 },
       },
     },
   });
@@ -971,31 +1594,78 @@ function showLoading() {
   $("dashboardSection").classList.add("hidden");
   $("loadingSection").classList.remove("hidden");
 }
-function hideLoading() {
-  $("loadingSection").classList.add("hidden");
+function hideLoading() { $("loadingSection").classList.add("hidden"); }
+
+/* ---------- Export ---------- */
+function exportData(format) {
+  if (!state.workbook) return;
+  const files = [];
+  if (format === "csv") {
+    exportCsvSheet(state.activeSheet);
+    return;
+  }
+  if (format === "csv-all") {
+    state.sheetNames.filter(n => state.visibleSheets.has(n)).forEach(n => exportCsvSheet(n, true));
+    showToast(`Exported ${state.visibleSheets.size} sheets as separate CSV files. Check your downloads.`, "success");
+    return;
+  }
+  if (format === "json") {
+    const out = {};
+    state.sheetNames.filter(n => state.visibleSheets.has(n)).forEach(n => {
+      const sheet = state.workbook[n];
+      out[n] = sheet.rows.map(r => {
+        const obj = {};
+        sheet.headers.forEach((h, i) => obj[h] = r[i]);
+        return obj;
+      });
+    });
+    const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+    downloadBlob(blob, `${state.fileName}.json`);
+    showToast("Exported as JSON", "success");
+    return;
+  }
+  if (format === "md") {
+    let md = `# ${state.fileName}\n\n`;
+    state.sheetNames.filter(n => state.visibleSheets.has(n)).forEach(n => {
+      const sheet = state.workbook[n];
+      md += `## ${n}\n\n`;
+      md += `| ${sheet.headers.join(" | ")} |\n`;
+      md += `| ${sheet.headers.map(() => "---").join(" | ")} |\n`;
+      sheet.rows.slice(0, 200).forEach(r => {
+        md += `| ${sheet.headers.map((_, i) => r[i] === null || r[i] === undefined ? "" : String(r[i]).replace(/\|/g, "\\|")).join(" | ")} |\n`;
+      });
+      if (sheet.rows.length > 200) md += `\n_...and ${sheet.rows.length - 200} more rows_\n`;
+      md += "\n";
+    });
+    const blob = new Blob([md], { type: "text/markdown" });
+    downloadBlob(blob, `${state.fileName}.md`);
+    showToast("Exported as Markdown", "success");
+    return;
+  }
 }
 
-/* ---------- Export CSV ---------- */
-function exportCsv() {
-  if (!state.workbook || !state.activeSheet) return;
-  const sheet = state.workbook[state.activeSheet];
-  const rows = getProcessedRows();
+function exportCsvSheet(sheetName, suppressToast = false) {
+  const sheet = state.workbook[sheetName];
   const lines = [sheet.headers.map(csvQuote).join(",")];
-  rows.forEach(r => lines.push(sheet.headers.map((_, i) => csvQuote(r[i])).join(",")));
+  sheet.rows.forEach(r => lines.push(sheet.headers.map((_, i) => csvQuote(r[i])).join(",")));
   const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${state.fileName}-${state.activeSheet}.csv`;
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-  showToast("Exported " + state.activeSheet + " as CSV", "success");
+  downloadBlob(blob, `${state.fileName}-${sheetName}.csv`);
+  if (!suppressToast) showToast("Exported " + sheetName + " as CSV", "success");
 }
+
 function csvQuote(v) {
   if (v === null || v === undefined) return "";
-  const s = String(v);
+  let s = v instanceof Date ? v.toISOString() : String(v);
   if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
   return s;
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /* ---------- Reset ---------- */
@@ -1003,18 +1673,407 @@ function reset() {
   state.workbook = null;
   state.sheetNames = [];
   state.activeSheet = null;
+  state.visibleSheets = new Set();
+  state.hiddenColumns = {};
+  state.columnFilters = {};
   state.searchTerm = "";
   state.sortCol = null;
-  if (state.barChart) state.barChart.destroy();
-  if (state.pieChart) state.pieChart.destroy();
-  state.barChart = state.pieChart = null;
+  state.page = 0;
+  state.aiContextSheet = null;
+  if (state.barChart) { state.barChart.destroy(); state.barChart = null; }
+  if (state.pieChart) { state.pieChart.destroy(); state.pieChart = null; }
+  state.chatHistory = [];
+  $("chatMessages").innerHTML = "";
   $("inputSection").classList.remove("hidden");
   $("dashboardSection").classList.add("hidden");
   $("loadingSection").classList.add("hidden");
-  $("exportCsvBtn").classList.add("hidden");
+  $("aiChatBtn").classList.add("hidden");
+  $("exportMenuBtn").classList.add("hidden");
   $("resetBtn").classList.add("hidden");
   $("sheetUrl").value = "";
   $("fileInput").value = "";
+  closeDrawer();
+}
+
+/* ---------- AI Assistant ---------- */
+function aiWelcomeMessage() {
+  if (!state.workbook) return;
+  const sheet = state.workbook[state.aiContextSheet || state.activeSheet];
+  if (!sheet) return;
+  const numCols = sheet.headers.filter(h => sheet.types[h] === "num").length;
+  const dateCols = sheet.headers.filter(h => sheet.types[h] === "date").length;
+  const strCols = sheet.headers.filter(h => sheet.types[h] === "str").length;
+  const msg = `Hi! I'm your AI data assistant. I can see **${state.aiContextSheet}** with ${sheet.rows.length} rows and ${sheet.headers.length} columns (${numCols} numeric, ${dateCols} date, ${strCols} text).\n\nAsk me things like:\n- "What's the total of ${sheet.headers.find(h => sheet.types[h] === 'num') || 'Amount'}?"\n- "Show top 5 by ${sheet.headers.find(h => sheet.types[h] === 'str') || 'Category'}"\n- "Summarize this data"`;
+  addChatMessage("ai", msg);
+  renderSuggestions();
+}
+
+function addChatMessage(role, content) {
+  state.chatHistory.push({ role, content });
+  const container = $("chatMessages");
+  const div = document.createElement("div");
+  div.className = `chat-msg ${role}`;
+  if (role === "ai") {
+    div.innerHTML = marked.parse(content);
+  } else if (role === "system") {
+    div.textContent = content;
+  } else {
+    div.textContent = content;
+  }
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function renderSuggestions() {
+  if (!state.workbook) { $("suggestionChips").innerHTML = ""; return; }
+  const sheet = state.workbook[state.aiContextSheet];
+  if (!sheet) return;
+  const numCol = sheet.headers.find(h => sheet.types[h] === "num");
+  const strCol = sheet.headers.find(h => sheet.types[h] === "str");
+  const dateCol = sheet.headers.find(h => sheet.types[h] === "date");
+  const suggestions = [];
+  if (numCol) suggestions.push(`Sum of ${numCol}`, `Average ${numCol}`, `Min/max of ${numCol}`);
+  if (strCol && numCol) suggestions.push(`Top 5 ${strCol} by ${numCol}`, `${numCol} by ${strCol}`);
+  if (strCol) suggestions.push(`Count by ${strCol}`, `Unique ${strCol}`);
+  if (dateCol && numCol) suggestions.push(`${numCol} over time by ${dateCol}`);
+  suggestions.push("Summarize this data", "Show column types");
+  $("suggestionChips").innerHTML = suggestions.slice(0, 8).map(s =>
+    `<button class="suggestion-chip" data-suggest="${escapeAttr(s)}">${escapeHtml(s)}</button>`
+  ).join("");
+  $$("[data-suggest]").forEach(b => b.addEventListener("click", () => {
+    $("chatInput").value = b.dataset.suggest;
+    sendChatMessage();
+  }));
+}
+
+async function sendChatMessage() {
+  const input = $("chatInput");
+  const text = input.value.trim();
+  if (!text) return;
+  if (!state.workbook) { showToast("Load a sheet first.", "error"); return; }
+  input.value = "";
+  input.style.height = "auto";
+  addChatMessage("user", text);
+
+  // Typing indicator
+  const container = $("chatMessages");
+  const typing = document.createElement("div");
+  typing.className = "chat-msg ai";
+  typing.innerHTML = `<span class="spinner"></span> <span style="margin-left:6px;color:var(--text-2);font-size:12px;">Thinking…</span>`;
+  container.appendChild(typing);
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    let reply;
+    if (state.aiEngine === "llm" && state.aiModel) {
+      reply = await askLLM(text);
+    } else {
+      reply = await localQueryEngine(text);
+    }
+    typing.remove();
+    addChatMessage("ai", reply);
+  } catch (e) {
+    typing.remove();
+    addChatMessage("ai", `⚠️ Error: ${e.message}\n\nFalling back to local query engine.`);
+    state.aiEngine = "local";
+    updateAIStatus();
+  }
+  renderSuggestions();
+}
+
+/* ---------- Local Query Engine (NL → operations) ---------- */
+async function localQueryEngine(query) {
+  await new Promise(r => setTimeout(r, 300)); // small delay for UX
+  const sheet = state.workbook[state.aiContextSheet];
+  if (!sheet) return "No sheet selected.";
+  const q = query.toLowerCase().trim();
+  const headers = sheet.headers;
+  const types = sheet.types;
+
+  // Find mentioned columns
+  const mentionedCols = headers.filter(h => q.includes(h.toLowerCase()));
+  const numCols = headers.filter(h => types[h] === "num");
+  const strCols = headers.filter(h => types[h] === "str");
+  const dateCols = headers.filter(h => types[h] === "date");
+
+  // Sum of X
+  let m = q.match(/(?:sum|total)\s+(?:of\s+)?(.+)/);
+  if (m) {
+    const col = findCol(m[1].trim(), headers);
+    if (col && types[col] === "num") {
+      const total = sheet.rows.reduce((s, r) => s + (coerceByType(r[headers.indexOf(col)], "num") || 0), 0);
+      return `**Sum of ${col}**: **${total.toLocaleString(undefined, {maximumFractionDigits: 2})}**\n\nComputed across ${sheet.rows.length} rows.`;
+    }
+  }
+  // Average / mean of X
+  m = q.match(/(?:average|avg|mean)\s+(?:of\s+)?(.+)/);
+  if (m) {
+    const col = findCol(m[1].trim(), headers);
+    if (col && types[col] === "num") {
+      const values = sheet.rows.map(r => coerceByType(r[headers.indexOf(col)], "num")).filter(v => v !== null);
+      if (values.length === 0) return `No numeric values found in ${col}.`;
+      const avg = values.reduce((s, v) => s + v, 0) / values.length;
+      const min = Math.min(...values), max = Math.max(...values);
+      return `**Statistics for ${col}**:\n\n- Average: **${avg.toLocaleString(undefined, {maximumFractionDigits: 2})}**\n- Min: ${min.toLocaleString()}\n- Max: ${max.toLocaleString()}\n- Count: ${values.length}`;
+    }
+  }
+  // Min/max of X
+  m = q.match(/(?:min(?:imum)?|max(?:imum)?)\s+(?:of\s+)?(.+)/);
+  if (m) {
+    const isMax = q.startsWith("max");
+    const col = findCol(m[1].trim(), headers);
+    if (col && types[col] === "num") {
+      const values = sheet.rows.map(r => ({ v: coerceByType(r[headers.indexOf(col)], "num"), row: r })).filter(x => x.v !== null);
+      if (values.length === 0) return `No numeric values found in ${col}.`;
+      values.sort((a, b) => isMax ? b.v - a.v : a.v - b.v);
+      const top = values.slice(0, 5);
+      let resp = `**${isMax ? 'Top 5 highest' : 'Top 5 lowest'} ${col}**:\n\n| ${col} | ${headers.filter(h => h !== col && types[h] === 'str').slice(0,2).join(" | ")} |\n| --- | --- |\n`;
+      top.forEach(t => {
+        const otherCols = headers.filter(h => h !== col && types[h] === 'str').slice(0, 2).map(h => String(t.row[headers.indexOf(h)] ?? "—")).join(" | ");
+        resp += `| ${t.v.toLocaleString()} | ${otherCols} |\n`;
+      });
+      return resp;
+    }
+  }
+  // Top N by X
+  m = q.match(/top\s+(\d+)\s+(.+?)\s+by\s+(.+)/);
+  if (m) {
+    const n = Math.min(parseInt(m[1]), 20);
+    const groupCol = findCol(m[2].trim(), headers);
+    const valueCol = findCol(m[3].trim(), headers);
+    if (groupCol && valueCol && types[valueCol] === "num") {
+      const agg = {};
+      sheet.rows.forEach(r => {
+        const g = r[headers.indexOf(groupCol)];
+        const v = coerceByType(r[headers.indexOf(valueCol)], "num");
+        if (g !== null && g !== undefined && g !== "" && v !== null) {
+          const key = String(g);
+          agg[key] = (agg[key] || 0) + v;
+        }
+      });
+      const sorted = Object.entries(agg).sort((a, b) => b[1] - a[1]).slice(0, n);
+      let resp = `**Top ${n} ${groupCol} by ${valueCol}**:\n\n| ${groupCol} | ${valueCol} |\n| --- | ---: |\n`;
+      sorted.forEach(([g, v]) => resp += `| ${g} | ${v.toLocaleString(undefined, {maximumFractionDigits: 2})} |\n`);
+      return resp;
+    }
+  }
+  // Count by X
+  m = q.match(/count\s+(?:by|of|for)\s+(.+)/);
+  if (m) {
+    const col = findCol(m[1].trim(), headers);
+    if (col) {
+      const counts = {};
+      sheet.rows.forEach(r => {
+        const v = r[headers.indexOf(col)];
+        const k = (v === null || v === undefined || v === "") ? "(empty)" : String(v);
+        counts[k] = (counts[k] || 0) + 1;
+      });
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15);
+      let resp = `**Count by ${col}** (top ${sorted.length}):\n\n| ${col} | Count |\n| --- | ---: |\n`;
+      sorted.forEach(([v, c]) => resp += `| ${v} | ${c} |\n`);
+      return resp;
+    }
+  }
+  // Unique values
+  m = q.match(/unique\s+(.+?)(?:\?|$)/);
+  if (m) {
+    const col = findCol(m[1].trim(), headers);
+    if (col) {
+      const set = new Set();
+      sheet.rows.forEach(r => {
+        const v = r[headers.indexOf(col)];
+        if (v !== null && v !== undefined && v !== "") set.add(String(v));
+      });
+      const arr = Array.from(set).slice(0, 30);
+      return `**${set.size} unique value${set.size === 1 ? '' : 's'}** in ${col}${set.size > 30 ? ` (showing first 30)` : ''}:\n\n${arr.map(v => `- ${v}`).join("\n")}`;
+    }
+  }
+  // Column types
+  if (q.includes("column type") || q.includes("schema") || q.includes("data type")) {
+    let resp = `**Schema for ${state.aiContextSheet}**:\n\n| Column | Type | Sample |\n| --- | --- | --- |\n`;
+    headers.forEach((h, i) => {
+      const sample = sheet.rows[0] ? String(sheet.rows[0][i] ?? "—").slice(0, 30) : "—";
+      resp += `| ${h} | \`${types[h]}\` | ${sample} |\n`;
+    });
+    return resp;
+  }
+  // Summarize
+  if (q.includes("summar") || q.includes("overview") || q.includes("describe")) {
+    let resp = `**Summary of ${state.aiContextSheet}** — ${sheet.rows.length} rows × ${headers.length} columns\n\n`;
+    resp += `**Numeric columns** (${numCols.length}):\n`;
+    numCols.forEach(h => {
+      const i = headers.indexOf(h);
+      const values = sheet.rows.map(r => coerceByType(r[i], "num")).filter(v => v !== null);
+      if (values.length > 0) {
+        const sum = values.reduce((s, v) => s + v, 0);
+        const avg = sum / values.length;
+        resp += `- **${h}**: sum=${sum.toLocaleString(undefined,{maximumFractionDigits:2})}, avg=${avg.toLocaleString(undefined,{maximumFractionDigits:2})}, min=${Math.min(...values).toLocaleString()}, max=${Math.max(...values).toLocaleString()}\n`;
+      }
+    });
+    resp += `\n**Categorical columns** (${strCols.length}):\n`;
+    strCols.forEach(h => {
+      const i = headers.indexOf(h);
+      const set = new Set();
+      sheet.rows.forEach(r => { const v = r[i]; if (v !== null && v !== undefined && v !== "") set.add(String(v)); });
+      resp += `- **${h}**: ${set.size} unique values\n`;
+    });
+    if (dateCols.length > 0) {
+      resp += `\n**Date columns** (${dateCols.length}): ${dateCols.join(", ")}\n`;
+    }
+    return resp;
+  }
+  // Filter: "show rows where X = Y"
+  m = q.match(/(?:show|find|filter|list)\s+(?:rows\s+)?(?:where\s+)?(.+?)\s*=\s*(.+)/);
+  if (m) {
+    const col = findCol(m[1].trim(), headers);
+    if (col) {
+      const val = m[2].trim().replace(/^["']|["']$/g, "");
+      const i = headers.indexOf(col);
+      const matches = sheet.rows.filter(r => String(r[i] ?? "").toLowerCase() === val.toLowerCase()).slice(0, 10);
+      if (matches.length === 0) return `No rows found where ${col} = "${val}".`;
+      let resp = `Found ${matches.length === 10 ? '10+' : matches.length} rows where **${col} = "${val}"** (showing first ${matches.length}):\n\n`;
+      resp += `| ${headers.join(" | ")} |\n| ${headers.map(() => "---").join(" | ")} |\n`;
+      matches.forEach(r => resp += `| ${headers.map((_, idx) => String(r[idx] ?? "—").replace(/\|/g, "\\|").slice(0, 50)).join(" | ")} |\n`);
+      return resp;
+    }
+  }
+  // Default: search the sheet for the query
+  if (mentionedCols.length > 0) {
+    return `I see you mentioned column${mentionedCols.length > 1 ? 's' : ''}: **${mentionedCols.join(", ")}**. Try asking:\n- "Sum of ${mentionedCols.find(c => types[c] === 'num') || mentionedCols[0]}"\n- "Top 5 by ${mentionedCols[0]}"\n- "Count by ${mentionedCols[0]}"\n- "Unique ${mentionedCols[0]}"\n\nOr for a richer answer, enable the local LLM engine (button top-right of this panel).`;
+  }
+  return `I can answer questions about **${state.aiContextSheet}** (${sheet.rows.length} rows). Try:\n- "Summarize this data"\n- "Show column types"\n- "Top 5 by ${strCols[0] || 'a column'}"\n- "${numCols[0] ? `Sum of ${numCols[0]}` : 'Count by ' + (strCols[0] || 'a column')}"\n\nFor full natural-language understanding, click **${state.webllmSupported ? 'Local' : 'Disabled'}** at the top to load a real LLM that runs entirely in your browser.`;
+}
+
+function findCol(text, headers) {
+  const t = text.toLowerCase().replace(/[?"'.,]/g, "").trim();
+  // exact match
+  let found = headers.find(h => h.toLowerCase() === t);
+  if (found) return found;
+  // contains
+  found = headers.find(h => h.toLowerCase().includes(t));
+  if (found) return found;
+  // reverse
+  found = headers.find(h => t.includes(h.toLowerCase()));
+  return found;
+}
+
+/* ---------- WebLLM integration ---------- */
+async function loadWebLLM() {
+  if (!state.webllmSupported) {
+    showToast("WebGPU not available in this browser. Try Chrome or Edge.", "error");
+    return;
+  }
+  if (state.aiEngineLoading) return;
+  state.aiEngineLoading = true;
+  updateAIStatus("Loading LLM model… (first time ~1GB download)");
+
+  try {
+    const webllm = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.78/+esm");
+    const selectedModel = "Qwen2.5-1.5B-Instruct-q4f32_1-MLC";
+
+    const progressDiv = document.createElement("div");
+    progressDiv.className = "chat-msg system";
+    progressDiv.id = "llmProgress";
+    progressDiv.innerHTML = `Loading <strong>${selectedModel}</strong>…<div class="progress-track mt-2"><div class="progress-fill" style="width:0%"></div></div><div class="text-[10px] mt-1" style="text-align:center;">0%</div>`;
+    $("chatMessages").appendChild(progressDiv);
+    $("chatMessages").scrollTop = $("chatMessages").scrollHeight;
+
+    state.aiModel = await webllm.CreateMLCEngine(selectedModel, {
+      initProgressCallback: (info) => {
+        const pct = info.progress ? Math.round(info.progress * 100) : 0;
+        const fill = progressDiv.querySelector(".progress-fill");
+        const lbl = progressDiv.querySelector(".text-\\[10px\\]");
+        if (fill) fill.style.width = pct + "%";
+        if (lbl) lbl.textContent = info.text || (pct + "%");
+      },
+    });
+    progressDiv.remove();
+    state.aiEngine = "llm";
+    state.aiEngineLoading = false;
+    updateAIStatus();
+    showToast("LLM ready! Ask anything about your data.", "success");
+    addChatMessage("system", "Switched to local LLM (Qwen2.5-1.5B). Your data stays in your browser.");
+  } catch (e) {
+    console.error(e);
+    state.aiEngineLoading = false;
+    state.aiEngine = "local";
+    updateAIStatus();
+    const p = $("llmProgress"); if (p) p.remove();
+    showToast("Failed to load LLM: " + e.message + ". Staying on local query engine.", "error", 5000);
+  }
+}
+
+async function askLLM(query) {
+  if (!state.aiModel) throw new Error("LLM not loaded");
+  const sheet = state.workbook[state.aiContextSheet];
+  if (!sheet) throw new Error("No sheet selected");
+
+  // Build context: schema + sample rows + stats
+  const sample = sheet.rows.slice(0, 30);
+  const context = `You are a data analyst assistant. The user uploaded a spreadsheet sheet named "${state.aiContextSheet}" with ${sheet.rows.length} rows.
+
+Columns (name: type):
+${sheet.headers.map((h, i) => `- "${h}": ${sheet.types[h]}`).join("\n")}
+
+First 30 rows (JSON):
+${JSON.stringify(sample, null, 2)}
+
+Answer the user's question based ONLY on this data. If a calculation is needed, you may reason step-by-step. Use markdown tables for tabular answers. Be concise.`;
+
+  const messages = [
+    { role: "system", content: context },
+    ...state.chatHistory.slice(-6).map(m => ({ role: m.role === "ai" ? "assistant" : "user", content: m.content })),
+    { role: "user", content: query },
+  ];
+
+  const chunks = [];
+  await new Promise((resolve, reject) => {
+    state.aiModel.chat.completions.create({
+      messages, stream: true, temperature: 0.3,
+    }).then(async (stream) => {
+      try {
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) chunks.push(delta);
+        }
+        resolve();
+      } catch (e) { reject(e); }
+    }).catch(reject);
+  });
+  return chunks.join("") || "(no response)";
+}
+
+function updateAIStatus(customMsg) {
+  const line = $("aiStatusLine");
+  const btn = $("aiEngineBtn");
+  if (customMsg) {
+    line.textContent = customMsg;
+    btn.textContent = "Loading…";
+    btn.disabled = true;
+    return;
+  }
+  btn.disabled = false;
+  if (state.aiEngine === "llm" && state.aiModel) {
+    line.textContent = "Local LLM (Qwen2.5-1.5B) · ready";
+    btn.textContent = "LLM ✓";
+  } else if (state.webllmSupported) {
+    line.textContent = "Local query engine · click 'Local' to enable LLM";
+    btn.textContent = "Local";
+  } else {
+    line.textContent = "Local query engine · (WebGPU unavailable)";
+    btn.textContent = "Local";
+    btn.disabled = true;
+  }
+}
+
+function openDrawer() {
+  $("aiDrawer").classList.add("open");
+  $("drawerBackdrop").classList.add("open");
+  if (state.chatHistory.length === 0) aiWelcomeMessage();
+}
+function closeDrawer() {
+  $("aiDrawer").classList.remove("open");
+  $("drawerBackdrop").classList.remove("open");
 }
 
 /* ---------- Demo data ---------- */
@@ -1096,11 +2155,36 @@ function loadDemo(kind) {
   setTimeout(() => ingestSheets(data), 300);
 }
 
+/* ---------- Search debounce ---------- */
+let searchDebounce = null;
+function onSearchInput(value) {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    state.searchTerm = value;
+    state.page = 0;
+    renderSheetsContainer();
+  }, 180);
+}
+
+/* ---------- Theme ---------- */
+function setTheme(theme) {
+  state.theme = theme;
+  document.documentElement.dataset.theme = theme === "midnight" ? "" : theme;
+  $("themeSelect").value = theme;
+  try { localStorage.setItem("sheetflow-theme", theme); } catch (e) {}
+}
+function setDensity(d) {
+  state.density = d;
+  document.documentElement.dataset.density = d;
+  $("densitySelect").value = d;
+}
+
 /* ---------- Event wiring ---------- */
 function wire() {
   const dz = $("dropzone");
   const fileInput = $("fileInput");
   dz.addEventListener("click", () => fileInput.click());
+  dz.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } });
   dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("dragging"); });
   dz.addEventListener("dragleave", () => dz.classList.remove("dragging"));
   dz.addEventListener("drop", (e) => {
@@ -1121,18 +2205,120 @@ function wire() {
     if (e.key === "Enter") $("loadUrlBtn").click();
   });
 
-  $("searchInput").addEventListener("input", (e) => {
-    state.searchTerm = e.target.value;
-    renderSheet();
+  // Delegated search input (since it's re-rendered)
+  document.addEventListener("input", (e) => {
+    if (e.target && e.target.id === "searchInput") onSearchInput(e.target.value);
   });
 
-  $("chartXSelect").addEventListener("change", renderCharts);
-  $("chartPieSelect").addEventListener("change", renderCharts);
+  $("chartXSelect").addEventListener("change", drawCharts);
+  $("chartPieSelect").addEventListener("change", drawCharts);
 
-  $("exportCsvBtn").addEventListener("click", exportCsv);
+  $("chartsToggle").addEventListener("change", (e) => {
+    state.showCharts = e.target.checked;
+    renderAll();
+  });
+  $("heatmapToggle").addEventListener("change", (e) => {
+    state.showHeatmap = e.target.checked;
+    renderAll();
+  });
+  $("densitySelect").addEventListener("change", (e) => setDensity(e.target.value));
+  $("pageSizeSelect").addEventListener("change", (e) => {
+    state.pageSize = parseInt(e.target.value);
+    state.page = 0;
+    renderAll();
+  });
+  $("viewModeSelect").addEventListener("change", (e) => {
+    state.viewMode = e.target.value;
+    renderAll();
+  });
+  $("themeSelect").addEventListener("change", (e) => setTheme(e.target.value));
+
+  // AI drawer
+  $("aiChatBtn").addEventListener("click", openDrawer);
+  $("closeDrawerBtn").addEventListener("click", closeDrawer);
+  $("drawerBackdrop").addEventListener("click", closeDrawer);
+  $("aiEngineBtn").addEventListener("click", () => {
+    if (state.aiEngine === "local") loadWebLLM();
+    else { state.aiEngine = "local"; updateAIStatus(); addChatMessage("system", "Switched to local query engine."); }
+  });
+  $("aiSheetSelect").addEventListener("change", (e) => {
+    state.aiContextSheet = e.target.value;
+    renderSuggestions();
+  });
+  $("chatSendBtn").addEventListener("click", sendChatMessage);
+  $("chatInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+  });
+  $("chatInput").addEventListener("input", (e) => {
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+  });
+  $("clearChatBtn").addEventListener("click", () => {
+    state.chatHistory = [];
+    $("chatMessages").innerHTML = "";
+    aiWelcomeMessage();
+  });
+
+  // Export menu
+  $("exportMenuBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const dd = $("exportDropdown");
+    const rect = e.currentTarget.getBoundingClientRect();
+    dd.style.top = (rect.bottom + 6) + "px";
+    dd.style.left = (rect.right - 180) + "px";
+    dd.classList.toggle("hidden");
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#exportDropdown") && !e.target.closest("#exportMenuBtn")) {
+      $("exportDropdown").classList.add("hidden");
+    }
+  });
+  $$("#exportDropdown [data-export]").forEach(b => {
+    b.addEventListener("click", () => {
+      $("exportDropdown").classList.add("hidden");
+      exportData(b.dataset.export);
+    });
+  });
+
   $("resetBtn").addEventListener("click", reset);
 
   document.querySelectorAll(".demo-btn").forEach(b => b.addEventListener("click", () => loadDemo(b.dataset.demo)));
+
+  // Global keyboard shortcuts
+  document.addEventListener("keydown", (e) => {
+    const cmd = e.metaKey || e.ctrlKey;
+    if (cmd && e.key === "k") {
+      e.preventDefault();
+      const s = $("searchInput");
+      if (s) s.focus();
+      else if (state.workbook) { state.viewMode = "single"; renderAll(); setTimeout(() => $("searchInput")?.focus(), 50); }
+    } else if (cmd && e.key === "j") {
+      e.preventDefault();
+      if (state.workbook) openDrawer();
+    } else if (e.key === "Escape") {
+      if ($("aiDrawer").classList.contains("open")) { closeDrawer(); return; }
+      if ($("exportDropdown").classList.contains("hidden") === false) { $("exportDropdown").classList.add("hidden"); return; }
+      if (state.searchTerm) { state.searchTerm = ""; const s = $("searchInput"); if (s) s.value = ""; renderAll(); }
+    } else if (e.key === "]" && state.workbook && !e.target.matches("input, textarea, select")) {
+      const visible = state.sheetNames.filter(n => state.visibleSheets.has(n));
+      const idx = visible.indexOf(state.activeSheet);
+      const next = visible[(idx + 1) % visible.length];
+      if (next) { state.activeSheet = next; state.aiContextSheet = next; state.searchTerm = ""; state.sortCol = null; state.page = 0; renderAISheetSelect(); renderAll(); }
+    } else if (e.key === "[" && state.workbook && !e.target.matches("input, textarea, select")) {
+      const visible = state.sheetNames.filter(n => state.visibleSheets.has(n));
+      const idx = visible.indexOf(state.activeSheet);
+      const prev = visible[(idx - 1 + visible.length) % visible.length];
+      if (prev) { state.activeSheet = prev; state.aiContextSheet = prev; state.searchTerm = ""; state.sortCol = null; state.page = 0; renderAISheetSelect(); renderAll(); }
+    }
+  });
+
+  // Init theme from storage
+  try {
+    const savedTheme = localStorage.getItem("sheetflow-theme");
+    if (savedTheme) setTheme(savedTheme);
+  } catch (e) {}
+  setDensity("normal");
+  updateAIStatus();
 }
 
 document.addEventListener("DOMContentLoaded", wire);
